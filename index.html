@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Dirtpickle">
+<meta name="theme-color" content="#000000">
+<link rel="manifest" href="manifest.json">
+<title>Dirtpickle Email Test</title>
+<style>
+  :root { --bg:#000; --fg:#fff; --mute:#9a9a9a; --pink:#ff2d8f; --line:#2a2a2a; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:max(16px, env(safe-area-inset-top)) 16px 40px; background:var(--bg); color:var(--fg);
+         font:18px/1.4 -apple-system, system-ui, sans-serif; max-width:720px; margin-inline:auto; }
+  h1 { font-size:28px; margin:8px 0 4px; }
+  h1 span { color:var(--pink); }
+  p.sub { color:var(--mute); margin:0 0 20px; }
+  .card { border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:16px; }
+  label { display:block; color:var(--mute); font-size:14px; margin:12px 0 4px; }
+  input { width:100%; padding:14px; font-size:18px; background:#111; color:var(--fg); border:1px solid var(--line); border-radius:10px; }
+  button { width:100%; padding:16px; font-size:18px; font-weight:600; border-radius:12px; border:0; margin-top:12px;
+           background:var(--pink); color:#000; }
+  button.alt { background:#1a1a1a; color:var(--fg); border:1px solid var(--line); }
+  .pill { display:inline-block; padding:2px 10px; border-radius:99px; font-size:13px; font-weight:700; }
+  .pending { background:#444; } .sending { background:#b58900; color:#000; } .sent { background:#2ea043; }
+  .failed { background:#da3633; } .auth_required { background:var(--pink); color:#000; }
+  .row { padding:10px 0; border-top:1px solid var(--line); }
+  .row:first-child { border-top:0; }
+  .mute { color:var(--mute); font-size:14px; }
+  #log { white-space:pre-wrap; font:13px/1.4 ui-monospace, monospace; color:var(--mute); }
+</style>
+</head>
+<body>
+<h1>DIRT<span>PICKLE</span> · email test</h1>
+<p class="sub">Spike: prove Gmail sending works from the iPad before building anything else.</p>
+
+<div class="card">
+  <div id="authStatus">Checking…</div>
+  <button id="btnConnect">Connect Gmail</button>
+  <button id="btnDisconnect" class="alt" hidden>Disconnect</button>
+</div>
+
+<div class="card">
+  <label for="to">Send test to</label>
+  <input id="to" type="email" inputmode="email" autocapitalize="off" placeholder="you@example.com">
+  <label for="name">Client name</label>
+  <input id="name" type="text" value="Test Client">
+  <button id="btnQueue">Create PDF + add to queue</button>
+  <button id="btnFlush" class="alt">Send queue now</button>
+  <p class="mute" id="net"></p>
+</div>
+
+<div class="card">
+  <strong>Outbox</strong>
+  <div id="outbox" class="mute">Empty</div>
+</div>
+
+<div class="card"><div id="log"></div></div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
