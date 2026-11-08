@@ -55,3 +55,15 @@ input:focus, textarea:focus { outline:none; border-color:var(--pink); }
 .yn { display:flex; gap:12px; } .yn button { flex:1; min-height:60px; font-size:22px; }
 .agree { max-height:34vh; overflow:auto; font-size:19px; } .agree p { margin:0 0 12px; }
 canvas.sig { width:100%; height:260px; background:#fff; border-radius:14px; touch-action:none; display:block; }
+
+/* queue / flash / timer */
+.stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(130px,1fr)); gap:12px; margin-bottom:16px; }
+.stat { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:12px 14px; }
+.stat b { display:block; font-size:30px; } .stat span { color:var(--mute); font-size:14px; }
+.fgrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(190px,1fr)); gap:14px; }
+.fitem { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:10px; cursor:pointer; }
+.fitem img { width:100%; aspect-ratio:1; object-fit:contain; background:#fff; border-radius:10px; display:block; margin-bottom:8px; }
+.fitem.dim { opacity:.4; } .fitem .sub { color:var(--mute); font-size:14px; }
+.chips { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+.timer { font-size:64px; font-weight:800; letter-spacing:1px; margin:8px 0 12px; font-variant-numeric:tabular-nums; }
+select { width:100%; font:inherit; padding:15px; background:var(--panel); color:var(--fg); border:2px solid var(--line); border-radius:12px; }

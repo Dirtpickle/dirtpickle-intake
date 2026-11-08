@@ -107,7 +107,7 @@ const Consent = (() => {
     if (d.privacy) { heading("Privacy notice shown and acknowledged"); text(d.privacy.text, { size: 9.5 }); text(`Acknowledged ${stamp(d.privacy.at)}`, { size: 9, color: GREY }); }
 
     heading("Session");
-    kv("Session ID", d.session.id); kv("Date", stamp(d.session.createdAt));
+    kv("Session ID", d.session.id); kv("Date", stamp(d.session.createdAt)); kv("Flash design", d.session.flashName);
 
     for (const sec of d.tpl.sections) {
       heading(sec.heading);
@@ -168,12 +168,12 @@ const Consent = (() => {
   const kbar = title => `<header class="bar"><h1>${esc(settings.business.toUpperCase())}</h1>
     <button class="small ghost" id="kStaff">Staff</button></header>${title ? `<h2 style="margin:0 0 12px">${esc(title)}</h2>` : ""}`;
 
-  function start(clientId) {
+  function start(clientId, sessionId) {
     const c = DB.get(clientId), tpl = activeTemplate();
     const age = ageOn(c.dob);
     if (age === null || age < settings.minAge) return { error: `Client is under the minimum age of ${settings.minAge} (or has no valid birth date).` };
     if (!tpl) return { error: "No consent template found." };
-    K = { clientId, tpl, answers: {}, contact: { phone: c.phone || "", email: c.email || "", address: c.address || "", emergencyName: c.emergencyName || "", emergencyPhone: c.emergencyPhone || "" } };
+    K = { clientId, sessionId: sessionId || null, tpl, answers: {}, contact: { phone: c.phone || "", email: c.email || "", address: c.address || "", emergencyName: c.emergencyName || "", emergencyPhone: c.emergencyPhone || "" } };
     return {};
   }
 
@@ -265,7 +265,9 @@ const Consent = (() => {
     const now = new Date().toISOString();
     const base = DB.get(K.clientId);
     const client = { ...base, ...K.contact, updatedAt: now, visits: [...(base.visits || []), now] };
-    const session = { type: "session", id: crypto.randomUUID(), clientId: client.id, createdAt: now, status: "paperwork-complete", tattoo: {} };
+    const existing = K.sessionId && DB.get(K.sessionId);
+    const session = existing ? { ...existing } : { type: "session", id: crypto.randomUUID(), clientId: client.id, createdAt: now, tattoo: {}, segments: [], price: "", deposit: "", paid: "", payMethod: "", notes: "", flashId: null, flashName: "" };
+    if (!["inprogress", "completed"].includes(session.status)) session.status = "ready";
     const docId = crypto.randomUUID();
     const ageAtSigning = ageOn(client.dob);
     const idCheck = (client.idChecks || []).slice(-1)[0] || null;
@@ -278,6 +280,7 @@ const Consent = (() => {
       template: K.tpl, answers: K.answers, signature, idCheck, ageAtSigning, privacy: { text: privacyText(), at: K.privacyAt || now },
       pdf: bytesToB64(bytes), sha256: hash, emailStatus: "not-sent"
     };
+    session.consentId = docId; session.updatedAt = now;
     await DB.put(session); await DB.put(record); await DB.put(client);
     return docId;
   }

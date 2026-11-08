@@ -115,6 +115,13 @@ const DB = (() => {
     isUnlocked() { return !!key; },
     get(id) { return cache.get(id); },
     all(type) { return [...cache.values()].filter(o => o.type === type); },
+    async remove(id) {
+      if (!key) throw new Error("Locked");
+      const o = cache.get(id);
+      if (o && o.locked) throw new Error("Signed records are locked and cannot be deleted");
+      await run("records", "readwrite", s => s.delete(id));
+      cache.delete(id);
+    },
     async put(obj) {
       if (!key) throw new Error("Locked");
       if (!obj.id) obj.id = crypto.randomUUID();

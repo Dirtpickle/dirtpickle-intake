@@ -137,9 +137,9 @@ screens.home = {
       <button class="tile primary" data-go="clientForm">NEW CLIENT<small>Register a new client</small></button>
       <button class="tile" data-go="returning">RETURNING CLIENT<small>Search name, phone or email</small></button>
       <button class="tile" data-go="clients">CLIENTS<small>${clients().length} on file</small></button>
-      <button class="tile soon">TODAY / QUEUE<small>Coming in a later phase</small></button>
+      <button class="tile" data-go="queue">TODAY / QUEUE<small>${DB.all("session").filter(s => ["waiting", "paperwork", "ready", "inprogress"].includes(s.status)).length} active</small></button>
       <button class="tile soon">APPOINTMENTS<small>Coming in a later phase</small></button>
-      <button class="tile soon">FLASH<small>Coming in a later phase</small></button>
+      <button class="tile" data-go="flash">FLASH<small>${DB.all("flash").length} designs</small></button>
       <button class="tile" data-go="documents">DOCUMENTS<small>${DB.all("consent").length} signed</small></button>
       <button class="tile" data-go="settings">SETTINGS<small>Business, age, auto-lock</small></button>
     </div>`
@@ -316,7 +316,8 @@ screens.profile = {
         ${row("Address", c.address)}${row("Emergency contact", [c.emergencyName, c.emergencyPhone].filter(Boolean).join(" · "))}
         ${row("First registered", fmtDate(c.createdAt))}</dl>
         <div class="actions"><button data-go="clientForm" data-id="${esc(c.id)}">Review / edit info</button>
-        <button id="addVisit">Record visit today</button></div></div>
+        <button id="addVisit">Record visit today</button>
+        <button data-go="flashPick" data-id="${esc(c.id)}">Add to today's queue</button></div></div>
       <div class="card"><strong>Consent paperwork</strong>
         <div class="actions" style="margin-top:10px"><button class="primary" id="startPaper">Start paperwork (hand iPad to client)</button></div>
         <div id="paperErr"></div>
@@ -327,7 +328,7 @@ screens.profile = {
       <div class="card"><label for="notes" style="margin-top:0">Notes</label>
         <textarea id="notes" rows="4">${esc(c.notes)}</textarea>
         <div class="actions"><button id="saveNotes">Save notes</button><span id="noteMsg" class="mute" style="align-self:center"></span></div></div>
-      <div class="card mute">Tattoo session details (design, price, photos) are coming in a later phase.</div>`;
+      <div class="card"><strong>Tattoo history</strong><div style="margin-top:8px">${Sessions.historyHtml(c.id)}</div></div>`;
   },
   bind(root, { id }) {
     if (!DB.get(id)) return;
@@ -353,6 +354,10 @@ screens.settings = {
   html: () => `${bar("Settings", { back: "home" })}
     <div class="card"><label for="biz" style="margin-top:0">Business name</label><input id="biz" value="${esc(settings.business)}">
       <label for="minAge">Minimum client age</label><input id="minAge" type="number" inputmode="numeric" min="0" max="99" value="${settings.minAge}">
+      <label for="evName">Event name</label><input id="evName" value="${esc((settings.event || {}).name || "Black Friday Flash")}">
+      <label for="evMin">Flash minimum price ($)</label><input id="evMin" type="number" inputmode="decimal" value="${(settings.event || {}).minPrice ?? 80}">
+      <label for="evMax">Flash maximum price ($)</label><input id="evMax" type="number" inputmode="decimal" value="${(settings.event || {}).maxPrice ?? 150}">
+      <label style="display:flex;gap:12px;align-items:center;color:var(--fg)"><input id="evTaken" type="checkbox" style="width:28px;height:28px" ${(settings.event || {}).markTaken === false ? "" : "checked"}> Mark a flash design unavailable once someone picks it</label>
       <label for="autoLock">Auto-lock after (minutes of no activity)</label><input id="autoLock" type="number" inputmode="numeric" min="1" max="120" value="${settings.autoLockMin}">
       <div class="actions"><button class="primary" id="saveSettings">Save settings</button><span id="setMsg" class="mute" style="align-self:center"></span></div></div>
     <div class="card"><button data-go="backup" style="width:100%">Backup, restore and change PIN</button></div>
@@ -361,7 +366,8 @@ screens.settings = {
     $("#saveSettings", root).onclick = async () => {
       const minAge = Math.max(0, Math.min(99, parseInt($("#minAge", root).value, 10) || 18));
       const autoLockMin = Math.max(1, Math.min(120, parseInt($("#autoLock", root).value, 10) || 5));
-      settings = { ...settings, business: $("#biz", root).value.trim() || "Dirtpickle", minAge, autoLockMin };
+      settings = { ...settings, business: $("#biz", root).value.trim() || "Dirtpickle", minAge, autoLockMin,
+        event: { name: $("#evName", root).value.trim() || "Event", minPrice: parseFloat($("#evMin", root).value) || 0, maxPrice: parseFloat($("#evMax", root).value) || 0, markTaken: $("#evTaken", root).checked } };
       await DB.put(settings);
       $("#setMsg", root).textContent = "Saved";
     };
