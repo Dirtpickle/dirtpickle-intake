@@ -360,8 +360,9 @@ screens.settings = {
       <label style="display:flex;gap:12px;align-items:center;color:var(--fg)"><input id="evTaken" type="checkbox" style="width:28px;height:28px" ${(settings.event || {}).markTaken === false ? "" : "checked"}> Mark a flash design unavailable once someone picks it</label>
       <label for="autoLock">Auto-lock after (minutes of no activity)</label><input id="autoLock" type="number" inputmode="numeric" min="1" max="120" value="${settings.autoLockMin}">
       <div class="actions"><button class="primary" id="saveSettings">Save settings</button><span id="setMsg" class="mute" style="align-self:center"></span></div></div>
+    <div class="card"><button data-go="formEditor" style="width:100%">Edit consent form</button></div>
     <div class="card"><button data-go="backup" style="width:100%">Backup, restore and change PIN</button></div>
-    <div class="card mute">Consent form editing and Gmail settings are coming in later phases.</div>`,
+    <div class="card mute">Gmail settings, appointments and aftercare documents are not built yet.</div>`,
   bind(root) {
     $("#saveSettings", root).onclick = async () => {
       const minAge = Math.max(0, Math.min(99, parseInt($("#minAge", root).value, 10) || 18));

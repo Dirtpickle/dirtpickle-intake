@@ -330,5 +330,5 @@ const Consent = (() => {
   };
 
   document.addEventListener("click", e => { if (e.target.closest("#kStaff")) lock(); });
-  return { init, start, docs, fileName, blobUrl, stamp };
+  return { init, start, docs, fileName, blobUrl, stamp, activeTemplate, defaultPrivacy: DEFAULT_PRIVACY };
 })();
