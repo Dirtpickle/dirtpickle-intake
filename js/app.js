@@ -40,7 +40,10 @@ function findDuplicate(c, selfId) {
 /* ---------- router / chrome ---------- */
 let cur = { name: "home", params: {} };
 const screens = {};
+let pendingScan = null;
 function go(name, params = {}) {
+  if (name !== "scan" && name !== "clientForm") pendingScan = null;
+  if (cur.name === "scan") Scan.stop();
   cur = { name, params };
   const s = screens[name];
   const root = $("#app");
@@ -163,12 +166,63 @@ function searchScreen(title, back, autofocus) {
 screens.returning = searchScreen("Returning client", "home", true);
 screens.clients = searchScreen("Clients", "home", false);
 
+/* ---------- ID scan ---------- */
+function idPanel(sc) {
+  const age = ageOn(sc.fields.dob);
+  const meets = age !== null && age >= settings.minAge;
+  return `<div style="margin-top:14px">
+    <div class="banner ok" style="margin:8px 0">✓ ID barcode read. Name, birth date and address filled in below.</div>
+    <div class="banner ${meets ? "ok" : "bad"}" style="margin:8px 0">${meets ? "✓" : "✗"} Calculated age: ${age === null ? "unknown" : age}
+      (${meets ? "meets" : "below"} the minimum of ${settings.minAge}).</div>
+    ${sc.idExpired ? `<div class="banner bad" style="margin:8px 0">This ID shows an expiry date in the past (${esc(sc.idExpiry)}).</div>` : ""}
+    <label style="display:flex;gap:12px;align-items:center;color:var(--fg);font-size:18px">
+      <input id="visualOk" type="checkbox" style="width:28px;height:28px"> I compared the ID photo to the client in person.</label>
+    <div class="banner warn" style="margin:8px 0;font-weight:400;font-size:16px">This app reads what the barcode says.
+      It does not confirm the card is genuine. The license image and number are not saved.</div></div>`;
+}
+screens.scan = {
+  html: ({ id }) => `${bar("Scan driver's license", { back: "clientForm", backId: id })}
+    <div class="card" style="padding:0;overflow:hidden;position:relative">
+      <video id="cam" playsinline muted style="width:100%;display:block;background:#000;min-height:260px"></video></div>
+    <div id="scanMsg" class="banner warn">Hold the BACK of the license (the barcode) flat in view, close, in good light.</div>
+    <div class="actions"><label class="btn" style="display:inline-flex;align-items:center">Take a photo instead
+      <input id="photo" type="file" accept="image/*" capture="environment" hidden></label>
+      <button class="ghost" data-go="clientForm"${id ? ` data-id="${esc(id)}"` : ""}>Enter manually</button></div>`,
+  async bind(root, { id }) {
+    const msg = t => { const m = $("#scanMsg", root); if (m) m.textContent = t; };
+    const done = text => {
+      const parsed = AAMVA.parse(text);
+      if (!parsed) { msg("A barcode was read, but it is not a driver's license barcode. Try the back of the card."); return false; }
+      pendingScan = { fields: { legalName: parsed.legalName, dob: parsed.dob, address: parsed.address },
+        idState: parsed.idState, idExpiry: parsed.idExpiry, idExpired: parsed.idExpired };
+      go("clientForm", id ? { id } : {});
+      return true;
+    };
+    $("#photo", root).onchange = async e => {
+      const f = e.target.files[0]; if (!f) return;
+      msg("Reading photo…");
+      try {
+        const text = await Scan.decodeBlob(f);
+        if (!text) msg("No barcode found in that photo. Retake it closer, with the barcode sharp and filling the frame.");
+        else done(text);
+      } catch (err) { msg("Could not read photo: " + err.message); }
+    };
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { msg("Camera is not available here. Use Take a photo, or enter manually."); return; }
+    try { await Scan.start($("#cam", root), t => { done(t); }, msg); }
+    catch (err) { msg("Camera could not start (" + (err.name || err.message) + "). Allow camera access, or use Take a photo."); }
+  }
+};
+
 /* ---------- Client form (new / edit) ---------- */
 screens.clientForm = {
   html({ id }) {
-    const c = (id && DB.get(id)) || {};
+    const c = { ...((id && DB.get(id)) || {}), ...((pendingScan && pendingScan.fields) || {}) };
     const f = (k, label, attrs = "") => `<label for="${k}">${label}</label><input id="${k}" value="${esc(c[k])}" ${attrs}>`;
     return `${bar(id ? "Review client info" : "New client", { back: id ? "profile" : "home", backId: id })}
+      <div class="card"><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <button class="primary" data-go="scan"${id ? ` data-id="${esc(id)}"` : ""}>Scan driver's license</button>
+        <span class="mute" style="font-size:16px">Or type the details in below.</span></div>
+        ${pendingScan ? idPanel(pendingScan) : ""}</div>
       <div class="cols">
         <div>${f("legalName", "Full legal name *", 'autocomplete="off" autocapitalize="words"')}
           ${f("preferredName", "Preferred name", 'autocapitalize="words"')}
@@ -206,7 +260,17 @@ screens.clientForm = {
       const now = new Date().toISOString();
       const rec = id ? { ...DB.get(id), ...data, updatedAt: now }
         : { type: "client", ...data, notes: "", visits: [now], createdAt: now, updatedAt: now };
+      if (pendingScan) {
+        // Verification record only. The license image and license number are never stored.
+        const sc = pendingScan;
+        rec.idChecks = [...(rec.idChecks || []), {
+          at: now, method: "pdf417-barcode", idState: sc.idState, idExpiry: sc.idExpiry, idExpired: sc.idExpired,
+          calculatedAge: ageOn(data.dob), minAge: settings.minAge, visuallyMatched: true,
+          authenticityChecked: false
+        }];
+      }
       await DB.put(rec);
+      pendingScan = null;
       go("profile", { id: rec.id });
     };
     save.onclick = async () => {
@@ -218,6 +282,7 @@ screens.clientForm = {
       else if (age >= 130) msgs.push("Check the date of birth.");
       else if (age < settings.minAge) msgs.push(`Client is under the minimum age of ${settings.minAge}.`);
       if (d.email && !/^\S+@\S+\.\S+$/.test(d.email)) msgs.push("Email address looks invalid.");
+      if (pendingScan && !($("#visualOk", root) || {}).checked) msgs.push("Confirm that you compared the ID to the client.");
       const box = $("#dupBox", root);
       if (msgs.length) { box.innerHTML = `<div class="banner bad">${msgs.map(esc).join("<br>")}</div>`; return; }
       const dup = findDuplicate(d, id);

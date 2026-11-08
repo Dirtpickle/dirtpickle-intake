@@ -1,5 +1,6 @@
-const CACHE = "dp-app-v2";
-const SHELL = ["./", "index.html", "manifest.json", "css/style.css", "js/db.js", "js/app.js"];
+const CACHE = "dp-app-v3";
+const SHELL = ["./", "index.html", "manifest.json", "css/style.css", "js/db.js", "js/aamva.js", "js/scan.js", "js/app.js",
+  "vendor/zxing/reader/index.js", "vendor/zxing/share.js", "vendor/zxing/zxing_reader.wasm", "vendor/pdf-lib/pdf-lib.min.js"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
