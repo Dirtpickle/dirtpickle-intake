@@ -2,7 +2,7 @@
 /* Dirtpickle intake app: Phase 1 (shell, PIN, local encrypted DB, client intake + search). */
 const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const DEFAULTS = { type: "settings", id: "settings", business: "Dirtpickle", minAge: 18, autoLockMin: 5 };
+const DEFAULTS = { type: "settings", id: "settings", business: "Dirtpickle", minAge: 18, autoLockMin: 5, backupDays: 7, lastBackupAt: null };
 let settings = { ...DEFAULTS };
 
 /* ---------- helpers ---------- */
@@ -132,6 +132,7 @@ document.addEventListener("visibilitychange", () => {
 /* ---------- Home ---------- */
 screens.home = {
   html: () => `${bar()}
+    ${Backup.overdue() ? `<div class="banner warn" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><span style="flex:1">${esc(Backup.overdue())} Make a backup.</span><button class="small" data-go="backup">Back up now</button></div>` : ""}
     <div class="grid">
       <button class="tile primary" data-go="clientForm">NEW CLIENT<small>Register a new client</small></button>
       <button class="tile" data-go="returning">RETURNING CLIENT<small>Search name, phone or email</small></button>
@@ -354,7 +355,8 @@ screens.settings = {
       <label for="minAge">Minimum client age</label><input id="minAge" type="number" inputmode="numeric" min="0" max="99" value="${settings.minAge}">
       <label for="autoLock">Auto-lock after (minutes of no activity)</label><input id="autoLock" type="number" inputmode="numeric" min="1" max="120" value="${settings.autoLockMin}">
       <div class="actions"><button class="primary" id="saveSettings">Save settings</button><span id="setMsg" class="mute" style="align-self:center"></span></div></div>
-    <div class="card mute">Backups, consent form editing, and Gmail settings are coming in later phases.</div>`,
+    <div class="card"><button data-go="backup" style="width:100%">Backup, restore and change PIN</button></div>
+    <div class="card mute">Consent form editing and Gmail settings are coming in later phases.</div>`,
   bind(root) {
     $("#saveSettings", root).onclick = async () => {
       const minAge = Math.max(0, Math.min(99, parseInt($("#minAge", root).value, 10) || 18));

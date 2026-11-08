@@ -9,6 +9,7 @@ const DB = (() => {
   const NAME = "dp-app", VER = 1, ITER = 600000;
   let idb = null, key = null;
   const cache = new Map(); // id -> decrypted object (only while unlocked)
+  let unreadable = 0;
 
   const open = () => new Promise((res, rej) => {
     const r = indexedDB.open(NAME, VER);
@@ -64,8 +65,51 @@ const DB = (() => {
       catch (_) { key = null; return false; }
       cache.clear();
       const all = await run("records", "readonly", s => s.getAll());
-      for (const rec of all) { try { cache.set(rec.id, await dec(rec)); } catch (_) { /* skip unreadable */ } }
+      unreadable = 0;
+      for (const rec of all) { try { cache.set(rec.id, await dec(rec)); } catch (_) { unreadable++; } }
       return true;
+    },
+    /* ---- backup / restore / PIN change (records stay encrypted; nothing readable leaves the device) ---- */
+    async exportRaw() {
+      const auth = await run("meta", "readonly", s => s.get("auth"));
+      const recs = await run("records", "readonly", s => s.getAll());
+      return { auth, recs };
+    },
+    async testBackup(auth, recs, pin) {
+      const k = await derive(pin, auth.salt);
+      const d = r => crypto.subtle.decrypt({ name: "AES-GCM", iv: r.iv }, k, r.data);
+      try { await d(auth.check); } catch (_) { return { pinOk: false, readable: 0, total: recs.length }; }
+      let readable = 0;
+      for (const r of recs) { try { await d(r); readable++; } catch (_) { /* counted as unreadable */ } }
+      return { pinOk: true, readable, total: recs.length };
+    },
+    async importRaw(auth, recs) {
+      await new Promise((res, rej) => {
+        const t = idb.transaction(["meta", "records"], "readwrite");
+        t.objectStore("records").clear();
+        t.objectStore("meta").put(auth, "auth");
+        for (const r of recs) t.objectStore("records").put(r);
+        t.oncomplete = res; t.onerror = t.onabort = () => rej(t.error);
+      });
+      key = null; cache.clear();
+    },
+    async changePin(newPin) {
+      if (!key) throw new Error("Locked");
+      if (unreadable) throw new Error("Some records could not be read; PIN change refused to avoid losing them. Make a backup first.");
+      const oldKey = key;
+      try {
+        const salt = crypto.getRandomValues(new Uint8Array(16));
+        key = await derive(newPin, salt);
+        const recs = [];
+        for (const o of cache.values()) { const { iv, data } = await enc(o); recs.push({ id: o.id, type: o.type, iv, data }); }
+        const check = await enc({ ok: "dirtpickle" });
+        await new Promise((res, rej) => {
+          const t = idb.transaction(["meta", "records"], "readwrite");
+          t.objectStore("meta").put({ salt, check, pinLength: newPin.length }, "auth");
+          for (const r of recs) t.objectStore("records").put(r);
+          t.oncomplete = res; t.onerror = t.onabort = () => rej(t.error);
+        });
+      } catch (e) { key = oldKey; throw e; }
     },
     lock() { key = null; cache.clear(); },
     isUnlocked() { return !!key; },
