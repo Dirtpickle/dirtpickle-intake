@@ -36,6 +36,9 @@ const Consent = (() => {
     ]
   };
 
+  const DEFAULT_PRIVACY = "Your privacy. This app works completely offline. Everything you enter, including your ID details, health answers and signature, is saved only on this device and is encrypted. It is not uploaded to any cloud or shared with anyone, and only the artist can open it, using a private PIN. The one exception: if you give an email address, a copy of your signed paperwork may be emailed to you.";
+  const privacyText = () => (K && K.tpl && K.tpl.privacy) || DEFAULT_PRIVACY;
+
   async function init() {
     if (!DB.all("template").length) await DB.put({ ...STARTER });
   }
@@ -100,6 +103,8 @@ const Consent = (() => {
     } else {
       text(`Date of birth entered manually. Calculated age ${d.ageAtSigning}; minimum age ${d.minAge}.`);
     }
+
+    if (d.privacy) { heading("Privacy notice shown and acknowledged"); text(d.privacy.text, { size: 9.5 }); text(`Acknowledged ${stamp(d.privacy.at)}`, { size: 9, color: GREY }); }
 
     heading("Session");
     kv("Session ID", d.session.id); kv("Date", stamp(d.session.createdAt));
@@ -171,6 +176,18 @@ const Consent = (() => {
     K = { clientId, tpl, answers: {}, contact: { phone: c.phone || "", email: c.email || "", address: c.address || "", emergencyName: c.emergencyName || "", emergencyPhone: c.emergencyPhone || "" } };
     return {};
   }
+
+  screens.kPrivacy = {
+    html: () => `${kbar("Before you start")}
+      <div class="card agree" style="max-height:none;font-size:22px"><p>${esc(privacyText())}</p></div>
+      <label class="qrow check" style="border:0"><input type="checkbox" id="privOk"><span>I have read this privacy notice.</span></label>
+      <div class="actions"><button class="primary" id="kNext" disabled>Continue</button></div>`,
+    bind(root) {
+      const b = $("#kNext", root);
+      $("#privOk", root).onchange = e => { b.disabled = !e.target.checked; };
+      b.onclick = () => { K.privacyAt = new Date().toISOString(); go("kReview"); };
+    }
+  };
 
   screens.kReview = {
     html() {
@@ -253,12 +270,12 @@ const Consent = (() => {
     const ageAtSigning = ageOn(client.dob);
     const idCheck = (client.idChecks || []).slice(-1)[0] || null;
     const bytes = await buildPdf({ business: settings.business, minAge: settings.minAge, client, session, tpl: K.tpl, answers: K.answers,
-      signature, signedAt: now, docId, ageAtSigning, idCheck });
+      signature, signedAt: now, docId, ageAtSigning, idCheck, privacy: { text: privacyText(), at: K.privacyAt || now } });
     const hash = hex(await crypto.subtle.digest("SHA-256", bytes));
     const record = {
       type: "consent", id: docId, locked: true, clientId: client.id, sessionId: session.id, signedAt: now,
       clientSnapshot: { id: client.id, legalName: client.legalName, dob: client.dob, phone: client.phone, email: client.email, address: client.address },
-      template: K.tpl, answers: K.answers, signature, idCheck, ageAtSigning,
+      template: K.tpl, answers: K.answers, signature, idCheck, ageAtSigning, privacy: { text: privacyText(), at: K.privacyAt || now },
       pdf: bytesToB64(bytes), sha256: hash, emailStatus: "not-sent"
     };
     await DB.put(session); await DB.put(record); await DB.put(client);

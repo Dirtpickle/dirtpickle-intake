@@ -337,7 +337,7 @@ screens.profile = {
     $("#startPaper", root).onclick = () => {
       const r = Consent.start(id);
       if (r.error) { $("#paperErr", root).innerHTML = `<div class="banner bad">${esc(r.error)}</div>`; return; }
-      go("kReview");
+      go("kPrivacy");
     };
     $("#addVisit", root).onclick = async () => {
       const c = DB.get(id);
