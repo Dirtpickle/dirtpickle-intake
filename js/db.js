@@ -74,6 +74,7 @@ const DB = (() => {
     async put(obj) {
       if (!key) throw new Error("Locked");
       if (!obj.id) obj.id = crypto.randomUUID();
+      if (cache.has(obj.id) && cache.get(obj.id).locked) throw new Error("Signed records are locked and cannot be changed");
       const { iv, data } = await enc(obj);
       await run("records", "readwrite", s => s.put({ id: obj.id, type: obj.type, iv, data }));
       cache.set(obj.id, obj);

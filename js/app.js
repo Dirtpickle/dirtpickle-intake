@@ -110,8 +110,9 @@ async function submitPin(mode, pin) {
   if (pinFails >= 5) { pinBusyUntil = Date.now() + 30000; pinFails = 0; showPin("unlock", "Too many tries. Wait 30 seconds."); }
   else showPin("unlock", "Wrong PIN");
 }
-function afterUnlock() {
+async function afterUnlock() {
   settings = { ...DEFAULTS, ...(DB.get("settings") || {}) };
+  await Consent.init();
   lastActive = Date.now();
   go("home");
 }
@@ -138,7 +139,7 @@ screens.home = {
       <button class="tile soon">TODAY / QUEUE<small>Coming in a later phase</small></button>
       <button class="tile soon">APPOINTMENTS<small>Coming in a later phase</small></button>
       <button class="tile soon">FLASH<small>Coming in a later phase</small></button>
-      <button class="tile soon">DOCUMENTS<small>Coming in a later phase</small></button>
+      <button class="tile" data-go="documents">DOCUMENTS<small>${DB.all("consent").length} signed</small></button>
       <button class="tile" data-go="settings">SETTINGS<small>Business, age, auto-lock</small></button>
     </div>`
 };
@@ -315,17 +316,28 @@ screens.profile = {
         ${row("First registered", fmtDate(c.createdAt))}</dl>
         <div class="actions"><button data-go="clientForm" data-id="${esc(c.id)}">Review / edit info</button>
         <button id="addVisit">Record visit today</button></div></div>
+      <div class="card"><strong>Consent paperwork</strong>
+        <div class="actions" style="margin-top:10px"><button class="primary" id="startPaper">Start paperwork (hand iPad to client)</button></div>
+        <div id="paperErr"></div>
+        <div style="margin-top:10px">${DB.all("consent").filter(d => d.clientId === c.id).sort((a, b) => b.signedAt.localeCompare(a.signedAt))
+          .map(d => `<div class="row" data-go="doc" data-id="${esc(d.id)}"><div class="grow">${esc(d.template.title)}<div class="sub">${esc(Consent.stamp(d.signedAt))}</div></div><div class="mute">›</div></div>`).join("")
+          || '<span class="mute">No signed forms yet. Each tattoo needs its own signed form.</span>'}</div></div>
       <div class="card"><strong>Visits</strong><div style="margin-top:8px">${visits || '<span class="mute">None</span>'}</div></div>
       <div class="card"><label for="notes" style="margin-top:0">Notes</label>
         <textarea id="notes" rows="4">${esc(c.notes)}</textarea>
         <div class="actions"><button id="saveNotes">Save notes</button><span id="noteMsg" class="mute" style="align-self:center"></span></div></div>
-      <div class="card mute">Tattoo sessions and signed consent forms will appear here in the next phases.</div>`;
+      <div class="card mute">Tattoo session details (design, price, photos) are coming in a later phase.</div>`;
   },
   bind(root, { id }) {
     if (!DB.get(id)) return;
     $("#saveNotes", root).onclick = async () => {
       await DB.put({ ...DB.get(id), notes: $("#notes", root).value, updatedAt: new Date().toISOString() });
       $("#noteMsg", root).textContent = "Saved";
+    };
+    $("#startPaper", root).onclick = () => {
+      const r = Consent.start(id);
+      if (r.error) { $("#paperErr", root).innerHTML = `<div class="banner bad">${esc(r.error)}</div>`; return; }
+      go("kReview");
     };
     $("#addVisit", root).onclick = async () => {
       const c = DB.get(id);
