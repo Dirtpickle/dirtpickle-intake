@@ -28,8 +28,8 @@ const Scan = (() => {
     });
     video.srcObject = stream;
     await video.play();
-    // Ask for continuous autofocus where the browser allows it (ignored otherwise).
-    try { await stream.getVideoTracks()[0].applyConstraints({ advanced: [{ focusMode: "continuous" }] }); } catch (_) {}
+    // Only ask for autofocus where supported: on Firefox applyConstraints silently drops the camera to 640x480.
+    try { const tr = stream.getVideoTracks()[0], caps = tr.getCapabilities ? tr.getCapabilities() : {}; if (caps.focusMode && caps.focusMode.includes("continuous")) await tr.applyConstraints({ advanced: [{ focusMode: "continuous" }] }); } catch (_) {}
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
     running = true;
