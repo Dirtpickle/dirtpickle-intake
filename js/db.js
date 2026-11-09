@@ -201,6 +201,17 @@ const DB = (() => {
       await run("records", "readwrite", s => s.put({ id: obj.id, type: obj.type, iv, data }));
       cache.set(obj.id, obj);
       return obj;
+    },
+    async updateEmailStatus(id, fields) {
+      if (!key) throw new Error("Locked");
+      const obj = cache.get(id);
+      if (!obj || !["consent", "countersign"].includes(obj.type)) throw new Error("Document not found");
+      const next = { ...obj, emailStatus: fields.emailStatus, emailError: fields.emailError || null,
+        emailedAt: fields.emailedAt || null };
+      const { iv, data } = await enc(next);
+      await run("records", "readwrite", s => s.put({ id: next.id, type: next.type, iv, data }));
+      cache.set(id, next);
+      return next;
     }
   };
 })();

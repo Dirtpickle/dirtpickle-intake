@@ -113,7 +113,8 @@ async function submitPin(mode, pin) {
 /* The intake side may only read this non-private data: form wording, business name, minimum age, available flash. */
 async function publishPublic() {
   const flash = DB.all("flash").filter(f => f.status === "available").map(({ id, name, sheet, price, minutes, image }) => ({ id, name, sheet, price, minutes, image }));
-  await DB.setPublic({ business: settings.business, artistName: settings.artistName, minAge: settings.minAge, template: Consent.activeTemplate(), flash, at: new Date().toISOString() });
+  await DB.setPublic({ business: settings.business, artistName: settings.artistName, minAge: settings.minAge, template: Consent.activeTemplate(),
+    relayConfigured: Mailer.configured(Mailer.relayFromSettings()), flash, at: new Date().toISOString() });
 }
 let intakeReady = false;
 async function afterUnlock() {
@@ -121,6 +122,7 @@ async function afterUnlock() {
   await Consent.init();
   await publishPublic(); intakeReady = true;
   try { await Intake.importAll(); } catch (e) { /* inbox stays for next time */ }
+  try { await Mailer.retryAll(); } catch (_) {}
   lastActive = Date.now();
   go("home");
 }
@@ -403,6 +405,8 @@ screens.settings = {
       <label for="evMax">Flash maximum price ($)</label><input id="evMax" type="number" inputmode="decimal" value="${(settings.event || {}).maxPrice ?? 150}">
       <label style="display:flex;gap:12px;align-items:center;color:var(--fg)"><input id="evTaken" type="checkbox" style="width:28px;height:28px" ${(settings.event || {}).markTaken === false ? "" : "checked"}> Mark a flash design unavailable once someone picks it</label>
       <label for="autoLock">Auto-lock after (minutes of no activity)</label><input id="autoLock" type="number" inputmode="numeric" min="1" max="120" value="${settings.autoLockMin}">
+      <hr><strong>Email relay</strong><p class="mute" style="font-size:16px">The relay URL and secret are encrypted with your PIN and never available during client check-in.</p>
+      ${Mailer.settingsHtml()}
       <div class="actions"><button class="primary" id="saveSettings">Save settings</button><span id="setMsg" class="mute" style="align-self:center"></span></div></div>
     <div class="card"><strong>Artist signature and initials</strong>
       <p class="mute" style="font-size:16px">Used on contracts you print and when you countersign a signed contract. Stored encrypted. Never available to the intake side.</p>
@@ -425,6 +429,7 @@ screens.settings = {
     <div class="card mute">Gmail settings, appointments and aftercare documents are not built yet.</div>`,
   bind(root) {
     $("#printBlank", root).onclick = () => Consent.printPaper();
+    Mailer.bindSettings(root);
     $("#eraseAll", root).onclick = async () => {
       const n = DB.all("client").length;
       if (!n) { alert("There are no clients to erase."); return; }
@@ -442,9 +447,10 @@ screens.settings = {
     $("#saveSettings", root).onclick = async () => {
       const minAge = Math.max(0, Math.min(99, parseInt($("#minAge", root).value, 10) || 18));
       const autoLockMin = Math.max(1, Math.min(120, parseInt($("#autoLock", root).value, 10) || 5));
-      settings = { ...settings, business: $("#biz", root).value.trim() || "Dirtpickle", artistName: $("#artist", root).value.trim() || DEFAULTS.artistName, minAge, autoLockMin,
+      settings = { ...Mailer.readSettings(root, settings), business: $("#biz", root).value.trim() || "Dirtpickle", artistName: $("#artist", root).value.trim() || DEFAULTS.artistName, minAge, autoLockMin,
         event: { name: $("#evName", root).value.trim() || "Event", minPrice: parseFloat($("#evMin", root).value) || 0, maxPrice: parseFloat($("#evMax", root).value) || 0, markTaken: $("#evTaken", root).checked } };
       await DB.put(settings);
+      await publishPublic();
       $("#setMsg", root).textContent = "Saved";
     };
   }

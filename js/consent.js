@@ -3,7 +3,11 @@
    Signed consent records are write-once: they hold a full snapshot of the wording the client saw. */
 const Consent = (() => {
   const DEFAULT_PRIVACY = "Your privacy. This app works completely offline. Everything you enter, including your ID details and a photo of your ID, health answers and signature, is saved only on this device and is encrypted. It is not uploaded to any cloud or shared with anyone, and only the artist can open it, using a private PIN. A copy of your signed agreement will be emailed to the email address you give us. That is the only information that leaves this device.";
-  const privacyText = () => (K && K.tpl && K.tpl.privacy) || DEFAULT_PRIVACY;
+  const privacyText = () => {
+    const text = (K && K.tpl && K.tpl.privacy) || DEFAULT_PRIVACY;
+    const relay = K && (K.mode === "intake" ? K.relayConfigured : Mailer.configured(Mailer.relayFromSettings()));
+    return relay ? text : text.replace("A copy of your signed agreement will be emailed to the email address you give us.", "Ask the artist for a copy.");
+  };
 
   async function init() {
     const tpls = DB.all("template");
@@ -287,7 +291,7 @@ const Consent = (() => {
 
   function startIntake(P, returning) {
     if (!P || !P.template) return { error: "The check-in form is not ready. Please ask staff." };
-    K = { mode: "intake", client: {}, scan: null, frontPhoto: null, flashId: null, flashName: "", returning: !!returning, tpl: P.template, answers: {}, contact: {}, privacyAt: null };
+    K = { mode: "intake", client: {}, scan: null, frontPhoto: null, flashId: null, flashName: "", returning: !!returning, tpl: P.template, relayConfigured: !!P.relayConfigured, answers: {}, contact: {}, privacyAt: null };
     return {};
   }
   screens.kPrivacy = {
@@ -390,8 +394,9 @@ const Consent = (() => {
 
   const emailNotice = () => {
     const em = K.mode === "intake" ? (K.client || {}).email : (K.contact || {}).email;
-    return em ? `<div class="banner ok" style="font-weight:400">A copy of this signed agreement will be emailed to <b>${esc(em)}</b>.</div>`
-      : `<div class="banner warn" style="font-weight:400">You did not give an email address, so no copy will be emailed. Please ask the artist for a copy.</div>`;
+    const relay = K.mode === "intake" ? K.relayConfigured : Mailer.configured(Mailer.relayFromSettings());
+    return em && relay ? `<div class="banner ok" style="font-weight:400">A copy of this signed agreement will be emailed to <b>${esc(em)}</b>.</div>`
+      : `<div class="banner warn" style="font-weight:400">${em && !relay ? "Ask the artist for a copy." : "You did not give an email address, so no copy will be emailed. Please ask the artist for a copy."}</div>`;
   };
   screens.kSign = {
     html: () => `${kbar("Read and sign")}
@@ -450,6 +455,7 @@ const Consent = (() => {
     };
     session.consentId = docId; session.updatedAt = now;
     await DB.put(session); await DB.put(record); await DB.put(client);
+    if (client.email && Mailer.configured(Mailer.relayFromSettings())) Mailer.send(record).catch(() => {});
     return docId;
   }
 
@@ -462,6 +468,8 @@ const Consent = (() => {
 
   /* ---------- documents (admin) ---------- */
   const docs = () => DB.all("consent").sort((a, b) => b.signedAt.localeCompare(a.signedAt));
+  const statusText = d => d.emailStatus || "not-sent";
+  const statusRows = () => docs().map(d => `<div>${esc(d.clientSnapshot.legalName)}: ${esc(statusText(d))}</div>`).join("");
   const docRow = d => `<div class="row" data-go="doc" data-id="${esc(d.id)}"><div class="grow"><div>${esc(d.clientSnapshot.legalName)}</div>
     <div class="sub">${esc(stamp(d.signedAt))} · ${esc(d.template.title)} v${d.template.version}</div></div><div class="mute">›</div></div>`;
   const blobUrl = d => URL.createObjectURL(new Blob([b64ToBytes(d.pdf)], { type: "application/pdf" }));
@@ -469,7 +477,8 @@ const Consent = (() => {
 
   screens.documents = {
     html: () => `${bar("Documents", { back: "home" })}<div class="card">${docs().map(docRow).join("") || '<span class="mute">No signed documents yet.</span>'}</div>
-      <div class="card mute">Email sending is not set up yet. Open a document to view, print, or share its PDF.</div>`
+      <div class="card"><strong>Email status</strong>${statusRows()}</div>
+      <div class="card mute">Open a document to view, print, share, or send its PDF.</div>`
   };
   async function countersign(consentId) {
     const d = DB.get(consentId);
@@ -484,7 +493,10 @@ const Consent = (() => {
       signature: d.signature, signedAt: d.signedAt, docId: d.id, ageAtSigning: d.ageAtSigning, idCheck, privacy: d.privacy, artist: settings.artistName,
       counter: { signature: settings.artistSignature, initials: settings.artistInitials, at: now, record: session.record, session } });
     const sha256 = hex(await crypto.subtle.digest("SHA-256", bytes));
-    await DB.put({ type: "countersign", id: "cs-" + consentId, locked: true, consentId, clientId: d.clientId, sessionId: d.sessionId, signedAt: now, pdf: bytesToB64(bytes), sha256 });
+    const record = { type: "countersign", id: "cs-" + consentId, locked: true, consentId, clientId: d.clientId, sessionId: d.sessionId, signedAt: now,
+      clientSnapshot: { ...d.clientSnapshot, email: cl.email || d.clientSnapshot.email }, pdf: bytesToB64(bytes), sha256, emailStatus: "not-sent" };
+    await DB.put(record);
+    if (cl.email && Mailer.configured(Mailer.relayFromSettings())) Mailer.send(record).catch(() => {});
   }
 
   function wirePdf(root, rec, ids, name) {
@@ -508,7 +520,9 @@ const Consent = (() => {
       const cs = DB.get("cs-" + id);
       return `${bar(esc(d.clientSnapshot.legalName), { back: "documents" })}<div class="card"><strong>Signed by the client</strong><dl class="kv" style="margin-top:8px">
         <dt>Signed</dt><dd>${esc(stamp(d.signedAt))}</dd><dt>Form</dt><dd>${esc(d.template.title)} v${d.template.version}</dd>
-        <dt>Document ID</dt><dd>${esc(d.id)}</dd><dt>SHA-256</dt><dd style="font-size:13px">${esc(d.sha256)}</dd><dt>Email</dt><dd>${esc(d.emailStatus)}</dd></dl>
+        <dt>Document ID</dt><dd>${esc(d.id)}</dd><dt>SHA-256</dt><dd style="font-size:13px">${esc(d.sha256)}</dd><dt>Email</dt><dd>${esc(statusText(d))}${d.emailError ? " — " + esc(d.emailError) : ""}</dd></dl>
+        <label for="emailTo">Send to</label><input id="emailTo" type="email" value="${esc(d.clientSnapshot.email || "")}" autocomplete="off">
+        <div class="actions"><button class="primary" id="sendEmail">Send / Resend</button></div><div id="emailMsg"></div>
         <div class="actions"><button class="primary" id="dView">View / Print</button><button id="dSave">Download / Share</button><button id="dVerify">Verify integrity</button></div>
         <div id="dMsg" style="margin-top:12px"></div></div>
         <div class="card"><strong>Artist countersignature</strong>
@@ -520,6 +534,11 @@ const Consent = (() => {
     },
     bind(root, { id }) {
       const d = DB.get(id); if (!d) return;
+      $("#sendEmail", root).onclick = async () => {
+        const msg = $("#emailMsg", root);
+        try { await Mailer.send(d, $("#emailTo", root).value); go("doc", { id }); }
+        catch (e) { msg.innerHTML = `<div class="banner warn">${esc(e.message)}${!navigator.onLine ? " It will retry when this device is online." : ""}</div>`; }
+      };
       wirePdf(root, d, { view: "#dView", save: "#dSave", verify: "#dVerify", msg: "#dMsg" }, fileName(d));
       const cs = DB.get("cs-" + id);
       if (cs) wirePdf(root, cs, { view: "#cView", save: "#cSave", verify: "#cVerify", msg: "#cMsg" }, fileName(d).replace(".pdf", "-countersigned.pdf"));
