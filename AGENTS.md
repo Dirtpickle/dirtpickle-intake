@@ -26,8 +26,7 @@ vendor/ = pdf-lib, zxing-wasm (do not edit). email-test/ = scratch, ignore.
 - Monolith watch: app.js (~460) and consent.js (~536) exceed 300 lines. Split what you touch before adding to it.
 
 ## Verify
-No test suite yet. First task: add Playwright tests in tests/ and `npm test`. Until then, verify by serving
-(`npx http-server -p 8080`) and exercising the flow in Chromium.
+`npm install && npx playwright install chromium && npm test`
 
 ## Protected / not Codex's job
 - vendor/, manifest.json icons. Pushing to GitHub, deploying, G:\My Drive. Real-device (iPad) testing.
