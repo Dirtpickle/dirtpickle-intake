@@ -186,10 +186,10 @@ const DB = (() => {
     async inboxRemove(id) { await run("inbox", "readwrite", s => s.delete(id)); },
     get(id) { return cache.get(id); },
     all(type) { return [...cache.values()].filter(o => o.type === type); },
-    async remove(id) {
+    async remove(id, opts = {}) {
       if (!key) throw new Error("Locked");
       const o = cache.get(id);
-      if (o && o.locked) throw new Error("Signed records are locked and cannot be deleted");
+      if (o && o.locked && !opts.force) throw new Error("Signed records are locked and cannot be deleted");
       await run("records", "readwrite", s => s.delete(id));
       cache.delete(id);
     },

@@ -310,6 +310,27 @@ screens.clientForm = {
   }
 };
 
+/* ---------- Deleting (explicit, confirmed; also removes the client's signed paperwork) ---------- */
+const CLIENT_TYPES = ["session", "consent", "countersign"];
+function clientFootprint(id) {
+  const rows = [];
+  for (const t of CLIENT_TYPES) for (const r of DB.all(t)) if (r.clientId === id) rows.push(r);
+  return rows;
+}
+async function freeFlashFor(sessions) {
+  for (const s of sessions) { const f = s.flashId && DB.get(s.flashId); if (f && f.status === "taken") await DB.put({ ...f, status: "available" }); }
+}
+async function deleteClient(id) {
+  const rows = clientFootprint(id);
+  await freeFlashFor(rows.filter(r => r.type === "session"));
+  for (const r of rows) await DB.remove(r.id, { force: true });
+  await DB.remove(id, { force: true });
+}
+async function eraseAllClientData() {
+  await freeFlashFor(DB.all("session"));
+  for (const t of ["client", ...CLIENT_TYPES]) for (const r of DB.all(t)) await DB.remove(r.id, { force: true });
+}
+
 /* ---------- Client profile ---------- */
 screens.profile = {
   html({ id }) {
@@ -340,6 +361,9 @@ screens.profile = {
       <div class="card"><label for="notes" style="margin-top:0">Notes</label>
         <textarea id="notes" rows="4">${esc(c.notes)}</textarea>
         <div class="actions"><button id="saveNotes">Save notes</button><span id="noteMsg" class="mute" style="align-self:center"></span></div></div>
+      <div class="card"><strong>Delete this client</strong>
+        <p class="mute" style="font-size:16px">Permanently removes this client and all of their sessions, signed contracts and countersigned copies from this device. It cannot be undone, so make a backup first if you might need them.</p>
+        <button class="danger" id="delClient">Delete client…</button></div>
       <div class="card"><strong>Tattoo history</strong><div style="margin-top:8px">${Sessions.historyHtml(c.id)}</div></div>`;
   },
   bind(root, { id }) {
@@ -349,6 +373,12 @@ screens.profile = {
       $("#noteMsg", root).textContent = "Saved";
     };
     $("#printPaper", root).onclick = () => Consent.printPaper(id);
+    $("#delClient", root).onclick = async () => {
+      const n = clientFootprint(id);
+      const msg = `Permanently delete ${DB.get(id).legalName}, ${n.filter(r => r.type === "session").length} session(s) and ${n.filter(r => r.type !== "session").length} signed document(s)? This cannot be undone.`;
+      if (!confirm(msg)) return;
+      await deleteClient(id); go("clients");
+    };
     $("#startPaper", root).onclick = () => {
       const r = Consent.start(id);
       if (r.error) { $("#paperErr", root).innerHTML = `<div class="banner bad">${esc(r.error)}</div>`; return; }
@@ -389,9 +419,19 @@ screens.settings = {
     <div class="card"><button data-go="formEditor" style="width:100%">Edit consent form</button>
       <button id="printBlank" style="width:100%;margin-top:12px">Print blank contract (wet ink)</button></div>
     <div class="card"><button data-go="backup" style="width:100%">Backup, restore and change PIN</button></div>
+    <div class="card"><strong>Erase test data</strong>
+      <p class="mute" style="font-size:16px">Deletes every client, session, signed contract and countersigned copy on this device. Your settings, form wording, flash designs and saved signature are kept.</p>
+      <button class="danger" id="eraseAll">Erase all client data…</button></div>
     <div class="card mute">Gmail settings, appointments and aftercare documents are not built yet.</div>`,
   bind(root) {
     $("#printBlank", root).onclick = () => Consent.printPaper();
+    $("#eraseAll", root).onclick = async () => {
+      const n = DB.all("client").length;
+      if (!n) { alert("There are no clients to erase."); return; }
+      const t = prompt(`This permanently deletes ${n} client(s) and ALL their paperwork. Type ERASE to confirm.`);
+      if (t !== "ERASE") return;
+      await eraseAllClientData(); go("settings");
+    };
     const wirePad = (canvasId, saveId, clearId, key, label) => {
       const btn = $(saveId, root), pad = Consent.sigPad($(canvasId, root), ok => { btn.disabled = !ok; }, { transparent: true });
       $(clearId, root).onclick = () => pad.clear();
