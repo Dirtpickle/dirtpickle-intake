@@ -221,7 +221,7 @@ screens.scan = {
     };
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { msg("Camera is not available here. Use Take a photo, or enter manually."); return; }
     try { await Scan.start($("#cam", root), t => { done(t); }, msg); }
-    catch (err) { msg("Camera could not start (" + (err.name || err.message) + "). Allow camera access, or use Take a photo."); }
+    catch (err) { msg(err.name === "NotAllowedError" ? "Camera access is blocked. Allow it in the browser or iPad Settings, or use Take a photo." : "Camera or scanner could not start (" + (err.name || err.message) + "). Use Take a photo, or enter manually."); }
   }
 };
 

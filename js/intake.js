@@ -98,7 +98,7 @@ const Intake = (() => {
       };
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { msg("Camera is not available. Use Take a photo, or type your details."); return; }
       try { await Scan.start($("#cam", root), t => { done(t); }, msg); }
-      catch (err) { msg("Camera could not start. Allow camera access, or use Take a photo."); }
+      catch (err) { msg(err.name === "NotAllowedError" ? "Camera access is blocked. Allow it in the browser or iPad Settings, or use Take a photo." : "Camera or scanner could not start (" + (err.name || err.message) + "). Use Take a photo, or type your details."); }
     }
   };
 

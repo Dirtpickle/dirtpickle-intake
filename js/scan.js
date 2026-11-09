@@ -18,7 +18,10 @@ const Scan = (() => {
   }
 
   async function start(video, onText, onMsg) {
+    const say = m => { if (onMsg) onMsg(m); };
+    say("Loading scanner…");
     const z = await lib();
+    say("Starting camera… tap Allow if asked.");
     stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false
     });
@@ -29,16 +32,22 @@ const Scan = (() => {
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
     running = true;
+    const t0 = Date.now(); let tries = 0;
     const tick = async () => {
       if (!running) return;
       if (video.videoWidth) {
+        tries++;
+        if (tries === 1 || tries % 3 === 0) {
+          const secs = Math.round((Date.now() - t0) / 1000);
+          say(`Camera on (${video.videoWidth}×${video.videoHeight}). Scanning… ${tries} tries. ` + (secs > 10 ? "Still looking: move the card closer or farther until the barcode is sharp, avoid glare, or tap Take a photo instead." : "Hold the BACK of the license flat, about 6 to 8 inches away."));
+        }
         const scale = Math.min(1, 1600 / video.videoWidth);
         canvas.width = Math.round(video.videoWidth * scale); canvas.height = Math.round(video.videoHeight * scale);
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         try {
           const r = await z.readBarcodes(ctx.getImageData(0, 0, canvas.width, canvas.height), OPTS);
           if (r.length && running) { stop(); onText(r[0].text); return; }
-        } catch (e) { onMsg && onMsg("Read error: " + e.message); }
+        } catch (e) { say("Scanner error: " + e.message); }
       }
       timer = setTimeout(tick, 150);
     };
