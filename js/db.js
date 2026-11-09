@@ -205,7 +205,7 @@ const DB = (() => {
     async updateEmailStatus(id, fields) {
       if (!key) throw new Error("Locked");
       const obj = cache.get(id);
-      if (!obj || !["consent", "countersign"].includes(obj.type)) throw new Error("Document not found");
+      if (!obj || !["consent", "countersign", "aftercare"].includes(obj.type)) throw new Error("Document not found");
       const next = { ...obj, emailStatus: fields.emailStatus, emailError: fields.emailError || null,
         emailedAt: fields.emailedAt || null };
       const { iv, data } = await enc(next);

@@ -143,7 +143,7 @@ const Sessions = (() => {
           <label style="display:flex;gap:10px;align-items:center;color:var(--fg);margin-top:14px"><input type="checkbox" id="s_ack" style="width:26px;height:26px" ${(s.record || {}).artistAck ? "checked" : ""}> Artist acknowledgment: I reviewed the client information, verified the client's age, addressed safety concerns, obtained consent, and provided or arranged aftercare instructions.</label></div>
         <label for="s_notes">Artist notes</label><textarea id="s_notes" rows="3">${esc(s.notes)}</textarea>
         <div class="actions"><button class="primary" id="sSave">Save</button><span id="sMsg" class="mute" style="align-self:center"></span></div>
-        <div class="card mute" style="margin-top:20px">Photos and aftercare for each session are coming in a later phase.</div>`;
+        ${AftercareUI.sessionSection(s)} `;
     },
     bind(root, { id }) {
       clearInterval(tick);
@@ -156,6 +156,10 @@ const Sessions = (() => {
           artistAck: $("#s_ack", root).checked, artistAckAt: $("#s_ack", root).checked ? (((DB.get(id) || {}).record || {}).artistAckAt || new Date().toISOString()) : null },
         price: v("price"), deposit: v("deposit"), paid: v("paid"), payMethod: $("#s_payMethod", root).value, notes: $("#s_notes", root).value });
       $("#sSave", root).onclick = async () => { await saveFields(); $("#sMsg", root).textContent = "Saved"; };
+      $("#acGive", root).onclick = async () => {
+        try { await saveFields(); await Aftercare.give(id, $("#acPick", root).value); go("session", { id }); }
+        catch (e) { alert(e.message); }
+      };
       const wire = (sel, fn) => { const el = $(sel, root); if (el) el.onclick = async () => { await saveFields(); await fn(DB.get(id)); go("session", { id }); }; };
       wire("#tStart", s => startTimer(s));
       wire("#tResume", s => save(s, { segments: [...segs(s), { s: new Date().toISOString(), e: null }] }));

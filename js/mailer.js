@@ -7,7 +7,7 @@ const Mailer = (() => {
   };
   const configured = relay => !!(relay && relay.url && relay.secret);
   const addressFor = doc => doc.to || (doc.clientSnapshot || {}).email || (doc.clientId && (DB.get(doc.clientId) || {}).email) || "";
-  const fileNameFor = doc => Consent.fileName(doc);
+  const fileNameFor = doc => doc.type === "aftercare" ? `${(doc.clientSnapshot.legalName || "client").replace(/[^a-z0-9]+/gi, "-")}-aftercare-${doc.createdAt.slice(0, 10)}.pdf` : Consent.fileName(doc);
   const bytesToB64 = u8 => { let s = ""; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); };
   let retrying = false;
 
@@ -16,8 +16,8 @@ const Mailer = (() => {
     const response = await fetch(relay.url, {
       method: "POST",
       headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify({ secret: relay.secret, to: addressFor(doc), subject: MAILER_CONFIG.subject,
-        body: MAILER_CONFIG.body, filename: fileNameFor(doc), pdfBase64: doc.pdf })
+      body: JSON.stringify({ secret: relay.secret, to: addressFor(doc), subject: doc.type === "aftercare" ? MAILER_CONFIG.aftercareSubject : MAILER_CONFIG.subject,
+        body: doc.type === "aftercare" ? MAILER_CONFIG.aftercareBody : MAILER_CONFIG.body, filename: fileNameFor(doc), pdfBase64: doc.pdf })
     });
     let reply;
     try { reply = await response.json(); } catch (_) { throw new Error("Email relay returned an invalid response"); }
@@ -51,7 +51,7 @@ const Mailer = (() => {
     if (retrying || !DB.isUnlocked() || !navigator.onLine || !configured(relayFromSettings())) return;
     retrying = true;
     try {
-      for (const doc of [...DB.all("consent"), ...DB.all("countersign")]) {
+      for (const doc of [...DB.all("consent"), ...DB.all("countersign"), ...DB.all("aftercare")]) {
         if (!["queued", "failed"].includes(doc.emailStatus)) continue;
         try { await send(doc); } catch (_) { /* status is retained for the next retry */ }
       }

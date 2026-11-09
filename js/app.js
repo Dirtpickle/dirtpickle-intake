@@ -120,6 +120,7 @@ let intakeReady = false;
 async function afterUnlock() {
   settings = { ...DEFAULTS, ...(DB.get("settings") || {}) };
   await Consent.init();
+  await Aftercare.init();
   await publishPublic(); intakeReady = true;
   try { await Intake.importAll(); } catch (e) { /* inbox stays for next time */ }
   try { await Mailer.retryAll(); } catch (_) {}
@@ -313,7 +314,7 @@ screens.clientForm = {
 };
 
 /* ---------- Deleting (explicit, confirmed; also removes the client's signed paperwork) ---------- */
-const CLIENT_TYPES = ["session", "consent", "countersign"];
+const CLIENT_TYPES = ["session", "consent", "countersign", "aftercare"];
 function clientFootprint(id) {
   const rows = [];
   for (const t of CLIENT_TYPES) for (const r of DB.all(t)) if (r.clientId === id) rows.push(r);
@@ -426,7 +427,7 @@ screens.settings = {
     <div class="card"><strong>Erase test data</strong>
       <p class="mute" style="font-size:16px">Deletes every client, session, signed contract and countersigned copy on this device. Your settings, form wording, flash designs and saved signature are kept.</p>
       <button class="danger" id="eraseAll">Erase all client data…</button></div>
-    <div class="card mute">Gmail settings, appointments and aftercare documents are not built yet.</div>`,
+    <div class="card"><button data-go="aftercare" style="width:100%">Manage aftercare templates</button></div>`,
   bind(root) {
     $("#printBlank", root).onclick = () => Consent.printPaper();
     Mailer.bindSettings(root);
