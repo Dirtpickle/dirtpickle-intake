@@ -6,3 +6,4 @@ playwright-report/
 .playwright-browsers/
 .pw-browsers/
 .npm-cache/
+scan-samples/
