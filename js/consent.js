@@ -340,6 +340,7 @@ const Consent = (() => {
   screens.kQuestions = {
     html: () => `${kbar(K.tpl.title)}${K.tpl.intro ? `<p class="mute">${esc(K.tpl.intro)}</p>` : ""}
       ${K.tpl.sections.map((s, si) => `<div class="card sec" data-si="${si}"><strong>${esc(s.heading)}</strong>
+        ${si === 0 ? `<div class="secbody"><p><b>Tattoo artist:</b> ${esc(settings.artistName)}</p></div>` : ""}
         ${s.body && s.body.length ? `<div class="secbody">${bodyHtml(s.body)}</div>` : ""}
         ${s.questions.map(qHtml).join("")}
         ${s.questions.filter(q => q.type === "check").length > 1 ? `<button class="small ghost" data-all="${si}" style="margin-top:8px">Tick all in this section</button>` : ""}
