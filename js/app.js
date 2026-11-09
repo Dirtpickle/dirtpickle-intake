@@ -328,6 +328,7 @@ screens.profile = {
         <div class="actions"><button data-go="clientForm" data-id="${esc(c.id)}">Review / edit info</button>
         <button id="addVisit">Record visit today</button>
         <button data-go="flashPick" data-id="${esc(c.id)}">Add to today's queue</button></div></div>
+      ${(c.idPhotos || []).length ? `<div class="card"><strong>ID photo (front)</strong><div class="sub mute">${esc(fmtDate(c.idPhotos[c.idPhotos.length - 1].at))}</div><img src="${c.idPhotos[c.idPhotos.length - 1].image}" alt="" style="max-width:420px;width:100%;border-radius:10px;margin-top:8px"></div>` : ""}
       <div class="card"><strong>Consent paperwork</strong>
         <div class="actions" style="margin-top:10px"><button class="primary" id="startPaper">Start paperwork (hand iPad to client)</button></div>
         <div id="paperErr"></div>

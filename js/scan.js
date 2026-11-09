@@ -9,6 +9,7 @@ const Scan = (() => {
     zx.prepareZXingModule({ overrides: { locateFile: p => "vendor/zxing/" + p }, fireImmediately: true });
     return zx;
   }
+  const diag = () => `camera:${navigator.mediaDevices && navigator.mediaDevices.getUserMedia ? "ok" : "NO"} wasm:${typeof WebAssembly === "object" ? "ok" : "NO"} secure:${window.isSecureContext ? "ok" : "NO"}`;
   const OPTS = { formats: ["PDF417"], tryHarder: true, tryRotate: true, tryInvert: true, maxNumberOfSymbols: 1, textMode: "Plain" };
 
   async function decodeBlob(blob) {
@@ -19,7 +20,7 @@ const Scan = (() => {
 
   async function start(video, onText, onMsg) {
     const say = m => { if (onMsg) onMsg(m); };
-    say("Loading scanner…");
+    say(`Loading scanner… (${diag()})`);
     const z = await lib();
     say("Starting camera… tap Allow if asked.");
     stream = await navigator.mediaDevices.getUserMedia({
@@ -47,7 +48,7 @@ const Scan = (() => {
         try {
           const r = await z.readBarcodes(ctx.getImageData(0, 0, canvas.width, canvas.height), OPTS);
           if (r.length && running) { stop(); onText(r[0].text); return; }
-        } catch (e) { say("Scanner error: " + e.message); }
+        } catch (e) { say(`Scanner error: ${e.message} (${diag()})`); }
       }
       timer = setTimeout(tick, 150);
     };
@@ -57,5 +58,5 @@ const Scan = (() => {
     running = false; clearTimeout(timer);
     if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
   }
-  return { start, stop, decodeBlob };
+  return { start, stop, decodeBlob, diag };
 })();

@@ -36,7 +36,7 @@ const Consent = (() => {
     ]
   };
 
-  const DEFAULT_PRIVACY = "Your privacy. This app works completely offline. Everything you enter, including your ID details, health answers and signature, is saved only on this device and is encrypted. It is not uploaded to any cloud or shared with anyone, and only the artist can open it, using a private PIN. The one exception: if you give an email address, a copy of your signed paperwork may be emailed to you.";
+  const DEFAULT_PRIVACY = "Your privacy. This app works completely offline. Everything you enter, including your ID details and a photo of your ID, health answers and signature, is saved only on this device and is encrypted. It is not uploaded to any cloud or shared with anyone, and only the artist can open it, using a private PIN. The one exception: if you give an email address, a copy of your signed paperwork may be emailed to you.";
   const privacyText = () => (K && K.tpl && K.tpl.privacy) || DEFAULT_PRIVACY;
 
   async function init() {
@@ -179,7 +179,7 @@ const Consent = (() => {
 
   function startIntake(P, returning) {
     if (!P || !P.template) return { error: "The check-in form is not ready. Please ask staff." };
-    K = { mode: "intake", client: {}, scan: null, flashId: null, flashName: "", returning: !!returning, tpl: P.template, answers: {}, contact: {}, privacyAt: null };
+    K = { mode: "intake", client: {}, scan: null, frontPhoto: null, flashId: null, flashName: "", returning: !!returning, tpl: P.template, answers: {}, contact: {}, privacyAt: null };
     return {};
   }
   screens.kPrivacy = {
@@ -277,7 +277,7 @@ const Consent = (() => {
     const bytes = await buildPdf({ business: settings.business, minAge: settings.minAge, client: c, session, tpl: K.tpl, answers: K.answers,
       signature, signedAt: now, docId, ageAtSigning, idCheck, privacy });
     const sha256 = hex(await crypto.subtle.digest("SHA-256", bytes));
-    await DB.seal({ v: 1, submittedAt: now, returning: K.returning, client: c, idCheck, session,
+    await DB.seal({ v: 1, submittedAt: now, returning: K.returning, client: c, idCheck, idPhoto: K.frontPhoto, session,
       consent: { id: docId, signedAt: now, template: K.tpl, answers: K.answers, signature, idCheck, ageAtSigning, privacy, pdf: bytesToB64(bytes), sha256 } });
     return docId;
   }
