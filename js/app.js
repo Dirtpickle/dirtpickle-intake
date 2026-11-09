@@ -2,7 +2,7 @@
 /* Dirtpickle intake app: Phase 1 (shell, PIN, local encrypted DB, client intake + search). */
 const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const DEFAULTS = { type: "settings", id: "settings", business: "Dirtpickle", minAge: 18, autoLockMin: 5, backupDays: 7, lastBackupAt: null };
+const DEFAULTS = { type: "settings", id: "settings", business: "Dirtpickle", minAge: 18, autoLockMin: 5, backupDays: 7, lastBackupAt: null, artistName: "Dirtpickle (Mike Peterson)" };
 let settings = { ...DEFAULTS };
 
 /* ---------- helpers ---------- */
@@ -113,7 +113,7 @@ async function submitPin(mode, pin) {
 /* The intake side may only read this non-private data: form wording, business name, minimum age, available flash. */
 async function publishPublic() {
   const flash = DB.all("flash").filter(f => f.status === "available").map(({ id, name, sheet, price, minutes, image }) => ({ id, name, sheet, price, minutes, image }));
-  await DB.setPublic({ business: settings.business, minAge: settings.minAge, template: Consent.activeTemplate(), flash, at: new Date().toISOString() });
+  await DB.setPublic({ business: settings.business, artistName: settings.artistName, minAge: settings.minAge, template: Consent.activeTemplate(), flash, at: new Date().toISOString() });
 }
 let intakeReady = false;
 async function afterUnlock() {
@@ -327,7 +327,8 @@ screens.profile = {
         ${row("First registered", fmtDate(c.createdAt))}</dl>
         <div class="actions"><button data-go="clientForm" data-id="${esc(c.id)}">Review / edit info</button>
         <button id="addVisit">Record visit today</button>
-        <button data-go="flashPick" data-id="${esc(c.id)}">Add to today's queue</button></div></div>
+        <button data-go="flashPick" data-id="${esc(c.id)}">Add to today's queue</button>
+        <button id="printPaper">Print contract (wet ink)</button></div></div>
       ${(c.idPhotos || []).length ? `<div class="card"><strong>ID photo (front)</strong><div class="sub mute">${esc(fmtDate(c.idPhotos[c.idPhotos.length - 1].at))}</div><img src="${c.idPhotos[c.idPhotos.length - 1].image}" alt="" style="max-width:420px;width:100%;border-radius:10px;margin-top:8px"></div>` : ""}
       <div class="card"><strong>Consent paperwork</strong>
         <div class="actions" style="margin-top:10px"><button class="primary" id="startPaper">Start paperwork (hand iPad to client)</button></div>
@@ -347,6 +348,7 @@ screens.profile = {
       await DB.put({ ...DB.get(id), notes: $("#notes", root).value, updatedAt: new Date().toISOString() });
       $("#noteMsg", root).textContent = "Saved";
     };
+    $("#printPaper", root).onclick = () => Consent.printPaper(id);
     $("#startPaper", root).onclick = () => {
       const r = Consent.start(id);
       if (r.error) { $("#paperErr", root).innerHTML = `<div class="banner bad">${esc(r.error)}</div>`; return; }
@@ -364,6 +366,7 @@ screens.profile = {
 screens.settings = {
   html: () => `${bar("Settings", { back: "home" })}
     <div class="card"><label for="biz" style="margin-top:0">Business name</label><input id="biz" value="${esc(settings.business)}">
+      <label for="artist">Tattoo artist legal name / business entity (printed on contracts)</label><input id="artist" value="${esc(settings.artistName)}">
       <label for="minAge">Minimum client age</label><input id="minAge" type="number" inputmode="numeric" min="0" max="99" value="${settings.minAge}">
       <label for="evName">Event name</label><input id="evName" value="${esc((settings.event || {}).name || "Black Friday Flash")}">
       <label for="evMin">Flash minimum price ($)</label><input id="evMin" type="number" inputmode="decimal" value="${(settings.event || {}).minPrice ?? 80}">
@@ -371,14 +374,16 @@ screens.settings = {
       <label style="display:flex;gap:12px;align-items:center;color:var(--fg)"><input id="evTaken" type="checkbox" style="width:28px;height:28px" ${(settings.event || {}).markTaken === false ? "" : "checked"}> Mark a flash design unavailable once someone picks it</label>
       <label for="autoLock">Auto-lock after (minutes of no activity)</label><input id="autoLock" type="number" inputmode="numeric" min="1" max="120" value="${settings.autoLockMin}">
       <div class="actions"><button class="primary" id="saveSettings">Save settings</button><span id="setMsg" class="mute" style="align-self:center"></span></div></div>
-    <div class="card"><button data-go="formEditor" style="width:100%">Edit consent form</button></div>
+    <div class="card"><button data-go="formEditor" style="width:100%">Edit consent form</button>
+      <button id="printBlank" style="width:100%;margin-top:12px">Print blank contract (wet ink)</button></div>
     <div class="card"><button data-go="backup" style="width:100%">Backup, restore and change PIN</button></div>
     <div class="card mute">Gmail settings, appointments and aftercare documents are not built yet.</div>`,
   bind(root) {
+    $("#printBlank", root).onclick = () => Consent.printPaper();
     $("#saveSettings", root).onclick = async () => {
       const minAge = Math.max(0, Math.min(99, parseInt($("#minAge", root).value, 10) || 18));
       const autoLockMin = Math.max(1, Math.min(120, parseInt($("#autoLock", root).value, 10) || 5));
-      settings = { ...settings, business: $("#biz", root).value.trim() || "Dirtpickle", minAge, autoLockMin,
+      settings = { ...settings, business: $("#biz", root).value.trim() || "Dirtpickle", artistName: $("#artist", root).value.trim() || DEFAULTS.artistName, minAge, autoLockMin,
         event: { name: $("#evName", root).value.trim() || "Event", minPrice: parseFloat($("#evMin", root).value) || 0, maxPrice: parseFloat($("#evMax", root).value) || 0, markTaken: $("#evTaken", root).checked } };
       await DB.put(settings);
       $("#setMsg", root).textContent = "Saved";

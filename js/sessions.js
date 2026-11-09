@@ -133,6 +133,13 @@ const Sessions = (() => {
         <div class="cols"><div>${f("description", "Tattoo description", t.description)}${f("location", "Body location", t.location)}${f("size", "Approximate size", t.size)}</div>
           <div>${f("price", "Price", s.price, 'inputmode="decimal"')}${f("deposit", "Deposit", s.deposit, 'inputmode="decimal"')}${f("paid", "Amount paid", s.paid, 'inputmode="decimal"')}
             <label for="s_payMethod">Payment method</label><select id="s_payMethod">${["", "Cash", "Card", "Venmo / Cash App", "Other"].map(o => `<option ${o === (s.payMethod || "") ? "selected" : ""}>${o}</option>`).join("")}</select></div></div>
+        <div class="card" style="margin-top:16px"><strong>Procedure record (artist use)</strong>
+          <div class="cols"><div>${f("needleType", "Needle / cartridge type", (s.record || {}).needleType)}${f("needleLot", "Needle / cartridge lot", (s.record || {}).needleLot)}${f("barrier", "Barrier / dressing used", (s.record || {}).barrier)}</div>
+          <div>${f("inkBrand", "Ink brand(s)", (s.record || {}).inkBrand)}${f("pigment", "Pigment / color(s)", (s.record || {}).pigment)}${f("inkLot", "Ink lot / batch number(s)", (s.record || {}).inkLot)}${f("inkExp", "Ink expiration date(s)", (s.record || {}).inkExp)}</div></div>
+          <label style="display:flex;gap:10px;align-items:center;color:var(--fg)"><input type="checkbox" id="s_aftercare" style="width:26px;height:26px" ${(s.record || {}).aftercareProvided ? "checked" : ""}> Aftercare instructions provided</label>
+          <label style="display:flex;gap:10px;align-items:center;color:var(--fg)"><input type="checkbox" id="s_photo" style="width:26px;height:26px" ${(s.record || {}).finalPhoto ? "checked" : ""}> Final procedure photograph taken</label>
+          <label for="s_compl">Additional notes / complications</label><textarea id="s_compl" rows="2">${esc((s.record || {}).complications)}</textarea>
+          <label style="display:flex;gap:10px;align-items:center;color:var(--fg);margin-top:14px"><input type="checkbox" id="s_ack" style="width:26px;height:26px" ${(s.record || {}).artistAck ? "checked" : ""}> Artist acknowledgment: I reviewed the client information, verified the client's age, addressed safety concerns, obtained consent, and provided or arranged aftercare instructions.</label></div>
         <label for="s_notes">Artist notes</label><textarea id="s_notes" rows="3">${esc(s.notes)}</textarea>
         <div class="actions"><button class="primary" id="sSave">Save</button><span id="sMsg" class="mute" style="align-self:center"></span></div>
         <div class="card mute" style="margin-top:20px">Photos and aftercare for each session are coming in a later phase.</div>`;
@@ -143,6 +150,9 @@ const Sessions = (() => {
       tick = setInterval(() => { const el = $("#timer"); if (!el || cur.name !== "session") { clearInterval(tick); return; } el.textContent = fmt(elapsed(DB.get(id))); }, 1000);
       const v = k => $("#s_" + k, root).value.trim();
       const saveFields = async () => save(DB.get(id), { tattoo: { description: v("description"), location: v("location"), size: v("size") },
+        record: { needleType: v("needleType"), needleLot: v("needleLot"), barrier: v("barrier"), inkBrand: v("inkBrand"), pigment: v("pigment"), inkLot: v("inkLot"), inkExp: v("inkExp"),
+          aftercareProvided: $("#s_aftercare", root).checked, finalPhoto: $("#s_photo", root).checked, complications: $("#s_compl", root).value,
+          artistAck: $("#s_ack", root).checked, artistAckAt: $("#s_ack", root).checked ? (((DB.get(id) || {}).record || {}).artistAckAt || new Date().toISOString()) : null },
         price: v("price"), deposit: v("deposit"), paid: v("paid"), payMethod: $("#s_payMethod", root).value, notes: $("#s_notes", root).value });
       $("#sSave", root).onclick = async () => { await saveFields(); $("#sMsg", root).textContent = "Saved"; };
       const wire = (sel, fn) => { const el = $(sel, root); if (el) el.onclick = async () => { await saveFields(); await fn(DB.get(id)); go("session", { id }); }; };

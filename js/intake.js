@@ -10,7 +10,7 @@ const Intake = (() => {
   const available = async () => (await DB.hasPin()) && (await DB.hasKeys()) && !!(await DB.getPublic());
   async function enter() {
     P = await DB.getPublic();
-    settings = { ...DEFAULTS, business: (P && P.business) || "Dirtpickle", minAge: (P && P.minAge) || 18 };
+    settings = { ...DEFAULTS, business: (P && P.business) || "Dirtpickle", artistName: (P && P.artistName) || DEFAULTS.artistName, minAge: (P && P.minAge) || 18 };
     startIdle();
     go("iWelcome");
   }

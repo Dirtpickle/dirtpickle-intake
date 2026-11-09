@@ -2,45 +2,15 @@
 /* Consent forms, signature, PDF generation, client check-in (kiosk) mode, and the Documents list.
    Signed consent records are write-once: they hold a full snapshot of the wording the client saw. */
 const Consent = (() => {
-  /* ---------- starter template (data, not code: editable in a later phase) ---------- */
-  const STARTER = {
-    type: "template", id: "tpl-default-v1", key: "default", version: 1,
-    name: "Starter consent (review and edit before relying on it)",
-    title: "Tattoo Consent and Release",
-    sections: [
-      { heading: "Health and safety", questions: [
-        { id: "h1", type: "yesno", label: "Are you under the influence of alcohol or drugs today?", required: true, mustBe: "no" },
-        { id: "h2", type: "yesno", label: "Have you eaten today?", required: true },
-        { id: "h3", type: "yesno", label: "Do you have diabetes, a heart condition, epilepsy, or a blood-clotting disorder?", required: true, detail: "Please explain" },
-        { id: "h4", type: "yesno", label: "Do you take blood thinners or other medication that affects bleeding or healing?", required: true, detail: "Please list" },
-        { id: "h5", type: "yesno", label: "Do you have a condition that affects your immune system, or an infectious disease?", required: true, detail: "Please explain" },
-        { id: "h6", type: "yesno", label: "Are you pregnant or nursing?", required: true },
-        { id: "h7", type: "yesno", label: "Do you have a history of keloid or raised scarring?", required: true },
-        { id: "h8", type: "yesno", label: "Do you have a skin condition, sunburn, rash, or open wound where the tattoo will go?", required: true, detail: "Please explain" },
-        { id: "h9", type: "yesno", label: "Are you allergic to latex, metals, ink, antibiotics, numbing products, or anything else?", required: true, detail: "Please list" },
-        { id: "h10", type: "text", label: "Anything else the artist should know about your health?", required: false }
-      ] },
-      { heading: "Declarations", questions: [
-        { id: "d1", type: "check", label: "I confirm I am at least the minimum legal age and the ID I showed is mine.", required: true },
-        { id: "d2", type: "check", label: "The answers I gave above are true and complete.", required: true },
-        { id: "d3", type: "check", label: "I understand a tattoo is permanent. The final result can differ from the drawing and from my expectations.", required: true },
-        { id: "d4", type: "check", label: "I understand the risks, including infection, allergic reaction, scarring, and color or line changes over time.", required: true },
-        { id: "d5", type: "check", label: "I received written aftercare instructions, or will, and I agree to follow them.", required: true },
-        { id: "d6", type: "check", label: "I choose this tattoo, its design, and its placement freely.", required: true }
-      ] }
-    ],
-    agreement: [
-      "I am giving my consent to be tattooed by the artist named on this form. I have had the chance to ask questions and they were answered.",
-      "I understand that a tattoo is a permanent change to my body and that healing depends on how I care for it. I release the artist and the business from claims arising from the ordinary risks of tattooing that I have been told about, to the extent the law allows.",
-      "I agree that this electronic signature has the same effect as my handwritten signature."
-    ]
-  };
-
-  const DEFAULT_PRIVACY = "Your privacy. This app works completely offline. Everything you enter, including your ID details and a photo of your ID, health answers and signature, is saved only on this device and is encrypted. It is not uploaded to any cloud or shared with anyone, and only the artist can open it, using a private PIN. The one exception: if you give an email address, a copy of your signed paperwork may be emailed to you.";
+  const DEFAULT_PRIVACY = "Your privacy. This app works completely offline. Everything you enter, including your ID details and a photo of your ID, health answers and signature, is saved only on this device and is encrypted. It is not uploaded to any cloud or shared with anyone, and only the artist can open it, using a private PIN. A copy of your signed agreement will be emailed to the email address you give us. That is the only information that leaves this device.";
   const privacyText = () => (K && K.tpl && K.tpl.privacy) || DEFAULT_PRIVACY;
 
   async function init() {
-    if (!DB.all("template").length) await DB.put({ ...STARTER });
+    const tpls = DB.all("template");
+    if (!tpls.some(t => t.source === CONTRACT.source)) {
+      const v = Math.max(0, ...tpls.filter(t => t.key === "default").map(t => t.version)) + 1;
+      await DB.put({ ...CONTRACT, id: `tpl-default-v${v}`, version: v });
+    }
   }
   const activeTemplate = () => DB.all("template").filter(t => t.key === "default").sort((a, b) => b.version - a.version)[0];
 
@@ -84,6 +54,8 @@ const Consent = (() => {
     y -= 12;
     text(d.business.toUpperCase(), { f: bold, size: 22, gap: 6 });
     text(d.tpl.title, { f: bold, size: 14, gap: 4 });
+    if (d.tpl.intro) text(d.tpl.intro, { size: 9.5, color: GREY, gap: 4 });
+    if (d.artist) text(`Tattoo artist: ${d.artist}`, { f: bold, size: 10 });
     text(`Signed ${stamp(d.signedAt)}   |   Template: ${d.tpl.name} (v${d.tpl.version})`, { size: 9, color: GREY });
 
     heading("Client");
@@ -109,15 +81,22 @@ const Consent = (() => {
     heading("Session");
     kv("Session ID", d.session.id); kv("Date", stamp(d.session.createdAt)); kv("Flash design", d.session.flashName);
 
-    for (const sec of d.tpl.sections) {
+    d.tpl.sections.forEach((sec, si) => {
       heading(sec.heading);
+      for (const l of (sec.body || [])) {
+        if (l.startsWith("- ")) text("\u2022 " + l.slice(2), { size: 9.5, indent: 10, gap: 2 });
+        else if (l.startsWith("# ")) text(l.slice(2), { f: bold, size: 10, gap: 2 });
+        else text(l, { size: 9.5, gap: 3 });
+      }
       for (const q of sec.questions) {
         const a = d.answers[q.id] || {};
-        let ans = q.type === "check" ? (a.v ? "Agreed" : "Not agreed") : q.type === "yesno" ? (a.v === "yes" ? "YES" : a.v === "no" ? "No" : "-") : (a.v || "-");
+        if (q.type === "check") { text(`${a.v ? "[X]" : "[  ]"} ${q.label}`, { size: 9.5, indent: 4, gap: 2 }); continue; }
+        let ans = q.type === "yesno" ? (a.v === "yes" ? "YES" : a.v === "no" ? "No" : "-") : (a.v || "-");
         if (a.d) ans += ` (${a.d})`;
-        text(q.label, { f: bold, size: 10 }); text(ans, { indent: 12, gap: 5 });
+        text(q.label, { f: bold, size: 9.5, gap: 2 }); text(ans, { indent: 12, gap: 4, size: 9.5 });
       }
-    }
+      if (sec.initials) text(`Client initials: ${(d.answers["init:" + si] || {}).v || "-"}`, { f: bold, size: 10 });
+    });
 
     heading("Agreement");
     for (const p of d.tpl.agreement) { text(p, { gap: 4 }); y -= 3; }
@@ -133,10 +112,106 @@ const Consent = (() => {
     text(`${c.legalName}   |   ${stamp(d.signedAt)}`, { size: 10 });
 
     const pages = pdf.getPages();
-    pages.forEach((p, i) => p.drawText(clean(`${d.business} | Document ${d.docId} | Page ${i + 1} of ${pages.length}`),
+    pages.forEach((p, i) => p.drawText(clean(`${d.business} | ${d.tpl.docVersion ? d.tpl.docVersion + " | " : ""}Document ${d.docId} | Page ${i + 1} of ${pages.length}`),
       { x: M, y: 28, size: 8, font, color: GREY }));
     pdf.setTitle(`${d.business} consent - ${c.legalName}`); pdf.setProducer(d.business); pdf.setCreator(d.business);
     return pdf.save();
+  }
+
+  /* ---------- printable (wet-ink) contract: same wording, blank or pre-filled, with artist sections ---------- */
+  async function buildPaperPdf(d) {
+    const { PDFDocument, StandardFonts, rgb } = PDFLib;
+    const pdf = await PDFDocument.create();
+    const font = await pdf.embedFont(StandardFonts.Helvetica), bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+    const W = 612, H = 792, M = 54, CW = W - 2 * M, PINK = rgb(1, 0.176, 0.561), INK = rgb(0, 0, 0), GREY = rgb(0.4, 0.4, 0.4);
+    let page, y;
+    const newPage = () => { page = pdf.addPage([W, H]); y = H - M; };
+    const need = h => { if (y - h < M + 30) newPage(); };
+    const wrap = (txt, f, size, width) => {
+      const out = [];
+      for (const para of clean(txt).split("\n")) {
+        let ln = "";
+        for (const w of para.split(/\s+/)) { const t = ln ? ln + " " + w : w; if (f.widthOfTextAtSize(t, size) > width && ln) { out.push(ln); ln = w; } else ln = t; }
+        out.push(ln);
+      }
+      return out;
+    };
+    const text = (txt, { f = font, size = 10, color = INK, indent = 0, gap = 3 } = {}) => {
+      for (const l of wrap(txt, f, size, CW - indent)) { need(size + gap); page.drawText(l, { x: M + indent, y: y - size, size, font: f, color }); y -= size + gap; }
+    };
+    const heading = t => { need(40); y -= 10; text(t.toUpperCase(), { f: bold, size: 11, color: PINK }); page.drawLine({ start: { x: M, y: y + 1 }, end: { x: W - M, y: y + 1 }, thickness: 0.6, color: PINK }); y -= 6; };
+    const line = (label, value, short) => {
+      need(24); const lw = bold.widthOfTextAtSize(clean(label), 10), x0 = M + lw + 6;
+      page.drawText(clean(label), { x: M, y: y - 10, size: 10, font: bold });
+      page.drawLine({ start: { x: x0, y: y - 12 }, end: { x: short ? x0 + 90 : W - M, y: y - 12 }, thickness: 0.5, color: GREY });
+      if (value) page.drawText(clean(value), { x: x0 + 4, y: y - 9, size: 10, font });
+      y -= 22;
+    };
+    const box = (x, top) => page.drawRectangle({ x, y: top - 9, width: 9, height: 9, borderColor: INK, borderWidth: 0.8 });
+    const checkLine = (label, indent = 0) => {
+      const ls = wrap(label, font, 9.5, CW - indent - 16); need(ls.length * 12 + 4); box(M + indent, y);
+      ls.forEach((l, i) => page.drawText(l, { x: M + indent + 16, y: y - 9 - i * 12, size: 9.5, font })); y -= ls.length * 12 + 4;
+    };
+    const yesNo = label => {
+      const ls = wrap(label, font, 9.5, CW - 120); need(ls.length * 12 + 6);
+      ls.forEach((l, i) => page.drawText(l, { x: M, y: y - 9 - i * 12, size: 9.5, font }));
+      const bx = W - M - 100; box(bx, y); page.drawText("Yes", { x: bx + 13, y: y - 9, size: 9.5, font }); box(bx + 52, y); page.drawText("No", { x: bx + 65, y: y - 9, size: 9.5, font });
+      y -= ls.length * 12 + 6;
+    };
+
+    newPage();
+    page.drawRectangle({ x: 0, y: H - 14, width: W, height: 14, color: INK });
+    page.drawRectangle({ x: 0, y: H - 18, width: W, height: 4, color: PINK });
+    y -= 12;
+    text(d.business.toUpperCase(), { f: bold, size: 22, gap: 6 });
+    text(d.tpl.title, { f: bold, size: 14, gap: 4 });
+    if (d.tpl.intro) text(d.tpl.intro, { size: 9.5, color: GREY, gap: 4 });
+    heading("1. Client information");
+    const c = d.client || {};
+    line("Full legal name:", c.legalName); line("Date of birth:", c.dob); line("Phone number:", c.phone); line("Email address:", c.email); line("Address:", c.address);
+    line("City / State / ZIP:", ""); line("Government ID type:", ""); line("Issuing state:", ""); line("ID expiration date:", "");
+    yesNo("Age verified by artist");
+    line("Tattoo artist:", d.artist || d.business); line("Procedure location:", ""); line("Date of procedure:", "");
+
+    d.tpl.sections.forEach((sec, si) => {
+      if (si === 0) return; // client information is drawn above
+      heading(sec.heading);
+      for (const l of (sec.body || [])) {
+        if (l.startsWith("- ")) text("• " + l.slice(2), { size: 9.5, indent: 10, gap: 2 });
+        else if (l.startsWith("# ")) text(l.slice(2), { f: bold, size: 10, gap: 2 });
+        else text(l, { size: 9.5, gap: 3 });
+      }
+      for (const q of sec.questions) {
+        if (q.type === "check") checkLine(q.label, 4);
+        else if (q.type === "yesno") yesNo(q.label);
+        else if (q.type === "choice") { text(q.label, { f: bold, size: 9.5, gap: 2 }); q.options.forEach(o => checkLine(o, 10)); }
+        else line(q.label + ":", "");
+      }
+      if (sec.initials) line("Client initials:", "", true);
+    });
+
+    heading("Client signature");
+    text(d.tpl.agreement.join(" "), { f: bold, size: 9.5, gap: 6 });
+    line("Signature:", ""); line("Printed name:", c.legalName); line("Date:", ""); line("Time:", "");
+    heading("Tattoo artist acknowledgment");
+    text("I acknowledge that I reviewed the required client information, verified the client's age, addressed relevant safety concerns, obtained consent, and provided or arranged for appropriate aftercare instructions.", { size: 9.5, gap: 6 });
+    line("Artist signature:", ""); line("Date:", "");
+    heading("Artist use only - procedure record");
+    for (const l of ["Stencil / design reference:", "Tattoo location:", "Procedure start time:", "Procedure end time:", "Needle / cartridge type:", "Needle / cartridge lot:",
+      "Ink brand(s):", "Pigment / color(s):", "Ink lot / batch number(s):", "Ink expiration date(s):", "Barrier / dressing used:"]) line(l, "");
+    yesNo("Aftercare instructions provided"); yesNo("Final procedure photograph taken");
+    text("Additional notes / complications:", { f: bold, size: 10, gap: 4 }); line("", ""); line("", "");
+    line("Final payment collected: $", ""); line("Artist initials:", "", true);
+
+    const pages = pdf.getPages();
+    pages.forEach((p, i) => p.drawText(clean(`${d.business} | ${d.tpl.docVersion ? d.tpl.docVersion + " | " : ""}Page ${i + 1} of ${pages.length}`), { x: M, y: 28, size: 8, font, color: GREY }));
+    pdf.setTitle(`${d.business} contract (print)`);
+    return pdf.save();
+  }
+  async function printPaper(clientId) {
+    const tpl = activeTemplate();
+    const bytes = await buildPaperPdf({ business: settings.business, artist: settings.artistName, tpl, client: clientId ? DB.get(clientId) : null });
+    window.open(URL.createObjectURL(new Blob([bytes], { type: "application/pdf" })), "_blank");
   }
 
   /* ---------- signature pad ---------- */
@@ -210,46 +285,84 @@ const Consent = (() => {
     }
   };
 
+  const bodyHtml = lines => {
+    let out = "", ul = false;
+    for (const l of lines) {
+      if (l.startsWith("- ")) { if (!ul) { out += "<ul>"; ul = true; } out += `<li>${esc(l.slice(2))}</li>`; continue; }
+      if (ul) { out += "</ul>"; ul = false; }
+      out += l.startsWith("# ") ? `<h4>${esc(l.slice(2))}</h4>` : `<p>${esc(l)}</p>`;
+    }
+    return out + (ul ? "</ul>" : "");
+  };
   const qHtml = q => {
     const a = K.answers[q.id] || {};
     if (q.type === "check") return `<label class="qrow check"><input type="checkbox" data-q="${q.id}" ${a.v ? "checked" : ""}><span>${esc(q.label)}</span></label>`;
     if (q.type === "yesno") return `<div class="qrow"><div class="ql">${esc(q.label)}${q.required ? " *" : ""}</div>
       <div class="yn" data-q="${q.id}"><button data-v="yes" class="${a.v === "yes" ? "primary" : ""}">Yes</button><button data-v="no" class="${a.v === "no" ? "primary" : ""}">No</button></div>
       ${q.detail ? `<input data-d="${q.id}" placeholder="${esc(q.detail)}" value="${esc(a.d)}" style="margin-top:10px;${a.v === "yes" ? "" : "display:none"}">` : ""}</div>`;
+    if (q.type === "choice") return `<div class="qrow"><div class="ql">${esc(q.label)}${q.required ? " *" : ""}</div><div class="choice" data-c="${q.id}">
+      ${q.options.map((o, i) => `<button data-opt="${i}" class="${a.v === o ? "primary" : ""}">${esc(o)}</button>`).join("")}</div></div>`;
     return `<div class="qrow"><div class="ql">${esc(q.label)}</div><input data-t="${q.id}" value="${esc(a.v)}"></div>`;
   };
   screens.kQuestions = {
-    html: () => `${kbar(K.tpl.title)}${K.tpl.sections.map(s => `<div class="card"><strong>${esc(s.heading)}</strong>${s.questions.map(qHtml).join("")}</div>`).join("")}
+    html: () => `${kbar(K.tpl.title)}${K.tpl.intro ? `<p class="mute">${esc(K.tpl.intro)}</p>` : ""}
+      ${K.tpl.sections.map((s, si) => `<div class="card sec" data-si="${si}"><strong>${esc(s.heading)}</strong>
+        ${s.body && s.body.length ? `<div class="secbody">${bodyHtml(s.body)}</div>` : ""}
+        ${s.questions.map(qHtml).join("")}
+        ${s.questions.filter(q => q.type === "check").length > 1 ? `<button class="small ghost" data-all="${si}" style="margin-top:8px">Tick all in this section</button>` : ""}
+        ${s.initials ? `<div class="qrow"><div class="ql">Your initials *</div><input data-i="${si}" maxlength="4" autocapitalize="characters" value="${esc((K.answers["init:" + si] || {}).v)}" style="width:180px;text-transform:uppercase"></div>` : ""}</div>`).join("")}
       <div id="kErr"></div><div class="actions"><button class="ghost" data-go="${K.mode === "intake" ? "iInfo" : "kReview"}">‹ Back</button><button class="primary" id="kNext">Continue</button></div>`,
     bind(root) {
       root.addEventListener("click", e => {
-        const b = e.target.closest(".yn button"); if (!b) return;
-        const id = b.parentElement.dataset.q; K.answers[id] = { ...(K.answers[id] || {}), v: b.dataset.v };
-        b.parentElement.querySelectorAll("button").forEach(x => x.classList.toggle("primary", x === b));
-        const d = root.querySelector(`[data-d="${id}"]`); if (d) d.style.display = b.dataset.v === "yes" ? "" : "none";
+        const b = e.target.closest(".yn button");
+        if (b) {
+          const id = b.parentElement.dataset.q; K.answers[id] = { ...(K.answers[id] || {}), v: b.dataset.v };
+          b.parentElement.querySelectorAll("button").forEach(x => x.classList.toggle("primary", x === b));
+          const d = root.querySelector(`[data-d="${id}"]`); if (d) d.style.display = b.dataset.v === "yes" ? "" : "none";
+          return;
+        }
+        const o = e.target.closest(".choice button");
+        if (o) {
+          const id = o.parentElement.dataset.c, q = K.tpl.sections.flatMap(s => s.questions).find(x => x.id === id);
+          K.answers[id] = { v: q.options[+o.dataset.opt] };
+          o.parentElement.querySelectorAll("button").forEach(x => x.classList.toggle("primary", x === o));
+          return;
+        }
+        const all = e.target.closest("[data-all]");
+        if (all) root.querySelectorAll(`.sec[data-si="${all.dataset.all}"] input[type=checkbox]`).forEach(c => { c.checked = true; K.answers[c.dataset.q] = { v: true }; });
       });
       root.addEventListener("change", e => { const q = e.target.dataset.q; if (q && e.target.type === "checkbox") K.answers[q] = { v: e.target.checked }; });
       root.addEventListener("input", e => {
         if (e.target.dataset.d) K.answers[e.target.dataset.d] = { ...(K.answers[e.target.dataset.d] || {}), d: e.target.value };
         if (e.target.dataset.t) K.answers[e.target.dataset.t] = { v: e.target.value };
+        if (e.target.dataset.i) K.answers["init:" + e.target.dataset.i] = { v: e.target.value.toUpperCase().trim() };
       });
       $("#kNext", root).onclick = () => {
-        const errs = [];
-        for (const s of K.tpl.sections) for (const q of s.questions) {
-          const a = K.answers[q.id] || {};
-          if (q.required && (q.type === "check" ? !a.v : !a.v)) { errs.push(q.type === "check" ? "Please agree to every declaration." : "Please answer every required question."); break; }
-          if (q.mustBe && a.v && a.v !== q.mustBe) errs.push("Please speak with the artist before continuing.");
-          if (q.detail && a.v === "yes" && !(a.d || "").trim()) errs.push("Please add details where you answered Yes.");
-        }
-        if (errs.length) { $("#kErr", root).innerHTML = `<div class="banner bad">${[...new Set(errs)].map(esc).join("<br>")}</div>`; return; }
+        const errs = new Set();
+        K.tpl.sections.forEach((s, si) => {
+          for (const q of s.questions) {
+            const a = K.answers[q.id] || {};
+            if (q.required && !a.v) errs.add(q.type === "check" ? "Please tick every box in every section." : "Please answer every required question.");
+            if (q.mustBe && a.v && a.v !== q.mustBe) errs.add("Please speak with the artist before continuing.");
+            if (q.detail && a.v === "yes" && !(a.d || "").trim()) errs.add("Please add details where you answered Yes.");
+          }
+          if (s.initials && !((K.answers["init:" + si] || {}).v || "").trim()) errs.add("Please add your initials in each section that asks for them.");
+        });
+        if (errs.size) { $("#kErr", root).innerHTML = `<div class="banner bad">${[...errs].map(esc).join("<br>")}</div>`; return; }
         go("kSign");
       };
     }
   };
 
+  const emailNotice = () => {
+    const em = K.mode === "intake" ? (K.client || {}).email : (K.contact || {}).email;
+    return em ? `<div class="banner ok" style="font-weight:400">A copy of this signed agreement will be emailed to <b>${esc(em)}</b>.</div>`
+      : `<div class="banner warn" style="font-weight:400">You did not give an email address, so no copy will be emailed. Please ask the artist for a copy.</div>`;
+  };
   screens.kSign = {
     html: () => `${kbar("Read and sign")}
       <div class="card agree">${K.tpl.agreement.map(p => `<p>${esc(p)}</p>`).join("")}</div>
+      ${emailNotice()}
       <label>Sign below with your finger or Apple Pencil</label>
       <canvas id="sig" class="sig"></canvas>
       <div class="actions"><button class="ghost" id="sigClear">Clear</button><button class="ghost" data-go="kQuestions">‹ Back</button>
@@ -275,7 +388,7 @@ const Consent = (() => {
     const privacy = { text: privacyText(), at: K.privacyAt || now };
     const session = { id: sessId, createdAt: now, flashId: K.flashId, flashName: K.flashName };
     const bytes = await buildPdf({ business: settings.business, minAge: settings.minAge, client: c, session, tpl: K.tpl, answers: K.answers,
-      signature, signedAt: now, docId, ageAtSigning, idCheck, privacy });
+      signature, signedAt: now, docId, ageAtSigning, idCheck, privacy, artist: settings.artistName });
     const sha256 = hex(await crypto.subtle.digest("SHA-256", bytes));
     await DB.seal({ v: 1, submittedAt: now, returning: K.returning, client: c, idCheck, idPhoto: K.frontPhoto, session,
       consent: { id: docId, signedAt: now, template: K.tpl, answers: K.answers, signature, idCheck, ageAtSigning, privacy, pdf: bytesToB64(bytes), sha256 } });
@@ -293,7 +406,7 @@ const Consent = (() => {
     const ageAtSigning = ageOn(client.dob);
     const idCheck = (client.idChecks || []).slice(-1)[0] || null;
     const bytes = await buildPdf({ business: settings.business, minAge: settings.minAge, client, session, tpl: K.tpl, answers: K.answers,
-      signature, signedAt: now, docId, ageAtSigning, idCheck, privacy: { text: privacyText(), at: K.privacyAt || now } });
+      signature, signedAt: now, docId, ageAtSigning, idCheck, privacy: { text: privacyText(), at: K.privacyAt || now }, artist: settings.artistName });
     const hash = hex(await crypto.subtle.digest("SHA-256", bytes));
     const record = {
       type: "consent", id: docId, locked: true, clientId: client.id, sessionId: session.id, signedAt: now,
@@ -308,7 +421,8 @@ const Consent = (() => {
 
   screens.kDone = {
     html: () => `${kbar("")}<div class="pin" style="max-width:520px"><h1>Thank you!</h1>
-      <p class="mute">Your paperwork is complete. Please hand the iPad back to your artist.</p></div>`,
+      <p class="mute">Your paperwork is complete. Please hand the iPad back to your artist.</p>
+      ${K ? emailNotice() : ""}</div>`,
     bind() { const intake = K && K.mode === "intake"; K = null; setTimeout(() => { if (cur.name === "kDone") (intake ? go("iWelcome") : lock()); }, 6000); }
   };
 
@@ -351,5 +465,5 @@ const Consent = (() => {
   };
 
   document.addEventListener("click", e => { if (e.target.closest("#kStaff")) { K = null; DB.isUnlocked() ? lock() : showPin("unlock"); } });
-  return { K: () => K, startIntake, buildPdf, privacyText, init, start, docs, fileName, blobUrl, stamp, activeTemplate, defaultPrivacy: DEFAULT_PRIVACY };
+  return { printPaper, K: () => K, startIntake, buildPdf, privacyText, init, start, docs, fileName, blobUrl, stamp, activeTemplate, defaultPrivacy: DEFAULT_PRIVACY };
 })();

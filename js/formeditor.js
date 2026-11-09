@@ -3,12 +3,13 @@
    every signed form already holds its own copy of the wording it was signed with. */
 const FormEditor = (() => {
   let E = null; // working copy
-  const TYPES = { yesno: "Yes / No", check: "Checkbox (must agree)", text: "Short answer" };
+  const TYPES = { yesno: "Yes / No", check: "Checkbox (must agree)", text: "Short answer", choice: "Choose one" };
   const rid = () => "q" + Math.random().toString(36).slice(2, 8);
 
   function qRow(si, qi, q, last) {
     return `<div class="card" style="margin:10px 0;padding:12px" data-si="${si}" data-qi="${qi}">
       <input data-f="label" value="${esc(q.label)}" placeholder="Question or statement">
+      ${q.type === "choice" ? `<textarea data-f="options" rows="3" placeholder="One choice per line" style="margin-top:8px">${esc((q.options || []).join("\n"))}</textarea>` : ""}
       <div class="actions" style="margin-top:10px;align-items:center">
         <select data-f="type" style="width:auto">${Object.entries(TYPES).map(([k, v]) => `<option value="${k}" ${q.type === k ? "selected" : ""}>${v}</option>`).join("")}</select>
         <label style="display:flex;gap:8px;align-items:center;margin:0;color:var(--fg)"><input type="checkbox" data-f="required" style="width:24px;height:24px" ${q.required ? "checked" : ""}> Required</label>
@@ -23,6 +24,9 @@ const FormEditor = (() => {
     <label for="e_priv">Privacy notice shown first to the client</label><textarea id="e_priv" rows="4">${esc(E.privacy || "")}</textarea>
     ${E.sections.map((s, si) => `<div class="card" data-sec="${si}"><label style="margin-top:0">Section heading</label>
       <input data-f="heading" value="${esc(s.heading)}">
+      <label>Text shown before the questions (one paragraph per line; start a line with "- " for a bullet or "# " for a sub-heading)</label>
+      <textarea data-f="body" rows="5">${esc((s.body || []).join("\n"))}</textarea>
+      <label style="display:flex;gap:10px;align-items:center;color:var(--fg)"><input type="checkbox" data-f="initials" style="width:24px;height:24px" ${s.initials ? "checked" : ""}> Ask the client for initials in this section</label>
       ${s.questions.map((q, qi) => qRow(si, qi, q, qi === s.questions.length - 1)).join("")}
       <div class="actions"><button class="small" data-ed="addq" data-si="${si}">+ Add question</button><button class="small danger" data-ed="delsec" data-si="${si}">Remove section</button></div></div>`).join("")}
     <div class="actions"><button data-ed="addsec">+ Add section</button></div>
@@ -37,9 +41,12 @@ const FormEditor = (() => {
     root.querySelectorAll("[data-sec]").forEach(secEl => {
       const s = E.sections[+secEl.dataset.sec];
       s.heading = secEl.querySelector('[data-f="heading"]').value;
+      s.body = secEl.querySelector('[data-f="body"]').value.split("\n").map(x => x.trim()).filter(Boolean);
+      s.initials = secEl.querySelector('[data-f="initials"]').checked;
       secEl.querySelectorAll("[data-qi]").forEach(qEl => {
         const q = s.questions[+qEl.dataset.qi], g = f => qEl.querySelector(`[data-f="${f}"]`);
         q.label = g("label").value; q.type = g("type").value; q.required = g("required").checked;
+        if (q.type === "choice") q.options = (g("options") ? g("options").value : (q.options || []).join("\n")).split("\n").map(x => x.trim()).filter(Boolean); else delete q.options;
         if (q.type === "yesno") q.detail = (g("detail") ? g("detail").value.trim() : q.detail) || undefined; else delete q.detail;
       });
     });
@@ -72,8 +79,9 @@ const FormEditor = (() => {
           collect(root);
           const empty = E.sections.some(s => s.questions.some(q => !q.label.trim()));
           const none = !E.sections.some(s => s.questions.length);
-          if (empty || none || !E.agreement.length || !E.title.trim()) {
-            $("#e_msg", root).innerHTML = `<div class="banner bad">${none ? "Add at least one question." : empty ? "Every question needs text." : !E.title.trim() ? "Add a title." : "Add the agreement text."}</div>`; return;
+          const badChoice = E.sections.some(s => s.questions.some(q => q.type === "choice" && (q.options || []).length < 2));
+          if (empty || none || badChoice || !E.agreement.length || !E.title.trim()) {
+            $("#e_msg", root).innerHTML = `<div class="banner bad">${badChoice ? "A choose-one question needs at least two choices." : none ? "Add at least one question." : empty ? "Every question needs text." : !E.title.trim() ? "Add a title." : "Add the agreement text."}</div>`; return;
           }
           const v = nextVersion();
           await DB.put({ ...E, type: "template", id: `tpl-${E.key}-v${v}`, version: v, createdAt: new Date().toISOString() });
