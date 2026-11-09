@@ -28,7 +28,7 @@ test("sends a text/plain relay request and records sent status", async ({ page }
   });
   await page.evaluate(() => Mailer.send(DB.get("email-doc")));
   expect(requestBody.secret).toBe("test-secret");
-  expect(requestBody.body).toBe("Your signed agreement is attached.");
+  expect(requestBody.body).toContain("signed tattoo agreement is attached");
   expect(requestBody.pdfBase64).toBe("AQID");
   expect(await page.evaluate(() => DB.get("email-doc").emailStatus)).toBe("sent");
 });

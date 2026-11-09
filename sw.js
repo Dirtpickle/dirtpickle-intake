@@ -1,4 +1,4 @@
-const CACHE = "dp-app-v16";
+const CACHE = "dp-app-v17";
 const SHELL = ["./", "index.html", "manifest.json", "css/style.css", "js/db.js", "js/mailer-config.js", "js/mailer.js", "js/aamva.js", "js/scan.js", "js/app.js", "js/contract.js", "js/consent.js", "js/backup.js", "js/sessions.js", "js/formeditor.js", "js/intake.js",
   "vendor/zxing/reader/index.js", "vendor/zxing/share.js", "vendor/zxing/zxing_reader.wasm", "vendor/pdf-lib/pdf-lib.min.js"];
 
