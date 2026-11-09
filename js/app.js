@@ -73,7 +73,7 @@ function pinHtml(title, hint, err = "") {
     <div class="err" id="pinErr">${esc(err)}</div>
     <div class="keys">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => `<button data-k="${n}">${n}</button>`).join("")}
       <button class="blank" disabled>.</button><button data-k="0">0</button><button data-k="del" aria-label="Delete">⌫</button></div>
-    <p class="mute" style="font-size:15px;margin-top:22px">${esc(hint)}</p></div>`;
+    <p class="mute" style="font-size:15px;margin-top:22px">${esc(hint)}</p>${intakeReady && DB && !DB.isUnlocked() ? `<button class="ghost small" data-go="iWelcome" style="margin-top:10px">‹ Back to check-in</button>` : ""}</div>`;
 }
 function showPin(mode, err = "") {
   cur = { name: "pin", params: {} };
@@ -110,16 +110,25 @@ async function submitPin(mode, pin) {
   if (pinFails >= 5) { pinBusyUntil = Date.now() + 30000; pinFails = 0; showPin("unlock", "Too many tries. Wait 30 seconds."); }
   else showPin("unlock", "Wrong PIN");
 }
+/* The intake side may only read this non-private data: form wording, business name, minimum age, available flash. */
+async function publishPublic() {
+  const flash = DB.all("flash").filter(f => f.status === "available").map(({ id, name, sheet, price, minutes, image }) => ({ id, name, sheet, price, minutes, image }));
+  await DB.setPublic({ business: settings.business, minAge: settings.minAge, template: Consent.activeTemplate(), flash, at: new Date().toISOString() });
+}
+let intakeReady = false;
 async function afterUnlock() {
   settings = { ...DEFAULTS, ...(DB.get("settings") || {}) };
   await Consent.init();
+  await publishPublic(); intakeReady = true;
+  try { await Intake.importAll(); } catch (e) { /* inbox stays for next time */ }
   lastActive = Date.now();
   go("home");
 }
-function lock() {
+async function lock() {
+  try { if (DB.isUnlocked()) await publishPublic(); } catch (_) {}
   DB.lock(); pinBuf = ""; pinFirst = null;
   $("#app").innerHTML = "";
-  showPin("unlock");
+  if (await Intake.available()) { intakeReady = true; Intake.enter(); } else showPin("unlock");
 }
 ["pointerdown", "keydown"].forEach(ev => document.addEventListener(ev, () => { lastActive = Date.now(); }, true));
 setInterval(() => {
@@ -132,6 +141,7 @@ document.addEventListener("visibilitychange", () => {
 /* ---------- Home ---------- */
 screens.home = {
   html: () => `${bar()}
+    ${(() => { const n = Intake.takeNotice(); return n ? `<div class="banner ok">${esc(n)}.</div>` : ""; })()}
     ${Backup.overdue() ? `<div class="banner warn" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><span style="flex:1">${esc(Backup.overdue())} Make a backup.</span><button class="small" data-go="backup">Back up now</button></div>` : ""}
     <div class="grid">
       <button class="tile primary" data-go="clientForm">NEW CLIENT<small>Register a new client</small></button>
@@ -380,5 +390,6 @@ screens.settings = {
   try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (_) {}
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
   await DB.open();
-  showPin((await DB.hasPin()) ? "unlock" : "setup1");
+  if (!(await DB.hasPin())) { showPin("setup1"); return; }
+  if (await Intake.available()) { intakeReady = true; Intake.enter(); } else showPin("unlock");
 })();

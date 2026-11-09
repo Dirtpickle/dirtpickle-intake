@@ -55,14 +55,21 @@ const Sessions = (() => {
   };
   function actions(s) {
     const b = (a, t, cls = "") => `<button class="small ${cls}" data-act="${a}" data-id="${esc(s.id)}">${t}</button>`;
-    if (s.status === "waiting" || s.status === "paperwork") return b("paper", "Paperwork", "primary") + b("cancel", "Cancel", "danger");
-    if (s.status === "ready") return b("start", "Start tattoo", "primary") + b("cancel", "Cancel", "danger");
+    const cl = DB.get(s.clientId), lastId = cl && (cl.idChecks || []).slice(-1)[0], needId = lastId && !lastId.visuallyMatched;
+    const idBtn = needId ? b("confirmid", "Confirm ID", "") : "";
+    if (s.status === "waiting" || s.status === "paperwork") return idBtn + b("paper", "Paperwork", "primary") + b("cancel", "Cancel", "danger");
+    if (s.status === "ready") return idBtn + b("start", "Start tattoo", "primary") + b("cancel", "Cancel", "danger");
     if (s.status === "inprogress") return b("open", "Open timer", "primary");
     return "";
   }
   document.addEventListener("click", async e => {
     const b = e.target.closest("[data-act]"); if (!b) return;
     const s = DB.get(b.dataset.id); if (!s) return;
+    if (b.dataset.act === "confirmid") {
+      const cl = DB.get(s.clientId); const ids = (cl.idChecks || []).slice();
+      ids[ids.length - 1] = { ...ids[ids.length - 1], visuallyMatched: true, visuallyConfirmedAt: new Date().toISOString() };
+      await DB.put({ ...cl, idChecks: ids, updatedAt: new Date().toISOString() }); go("queue"); return;
+    }
     if (b.dataset.act === "paper") {
       const r = Consent.start(s.clientId, s.id);
       if (r.error) { alert(r.error); return; }
@@ -221,5 +228,5 @@ const Sessions = (() => {
       <div class="sub">${esc(new Date(s.createdAt).toLocaleDateString())} · ${LABEL[s.status]}${s.tattoo && s.tattoo.location ? " · " + esc(s.tattoo.location) : ""}${s.price !== "" && s.price != null ? " · " + money(s.price) : ""}${s.durationMs ? " · " + fmt(s.durationMs) : ""}</div></div><div class="mute">›</div></div>`).join("")
       || '<span class="mute">No sessions yet.</span>';
   }
-  return { historyHtml, createSession };
+  return { historyHtml, createSession, claim: id => claimFlash(id, true) };
 })();

@@ -97,7 +97,7 @@ const Consent = (() => {
     heading("Identification and age");
     if (d.idCheck) {
       text(`ID barcode read on ${stamp(d.idCheck.at)}${d.idCheck.idState ? ` (state: ${d.idCheck.idState})` : ""}.`);
-      text(`Calculated age ${d.idCheck.calculatedAge}; minimum age ${d.idCheck.minAge}. Staff confirmed in person that the ID matched the client.`);
+      text(`Calculated age ${d.idCheck.calculatedAge}; minimum age ${d.idCheck.minAge}. ${d.idCheck.visuallyMatched ? "The artist confirmed in person that the ID matched the client." : "In-person comparison of the ID to the client is recorded separately by the artist."}`);
       if (d.idCheck.idExpired) text("Note: the ID showed an expiry date in the past.");
       text("Authenticity of the physical document was not verified by this software.", { color: GREY, size: 9.5 });
     } else {
@@ -166,7 +166,7 @@ const Consent = (() => {
   /* ---------- check-in (kiosk) flow ---------- */
   let K = null; // current check-in: { clientId, tpl, contact, answers }
   const kbar = title => `<header class="bar"><h1>${esc(settings.business.toUpperCase())}</h1>
-    <button class="small ghost" id="kStaff">Staff</button></header>${title ? `<h2 style="margin:0 0 12px">${esc(title)}</h2>` : ""}`;
+    <button class="small ghost" id="kStaff">Artist sign-in</button></header>${title ? `<h2 style="margin:0 0 12px">${esc(title)}</h2>` : ""}`;
 
   function start(clientId, sessionId) {
     const c = DB.get(clientId), tpl = activeTemplate();
@@ -177,6 +177,11 @@ const Consent = (() => {
     return {};
   }
 
+  function startIntake(P, returning) {
+    if (!P || !P.template) return { error: "The check-in form is not ready. Please ask staff." };
+    K = { mode: "intake", client: {}, scan: null, flashId: null, flashName: "", returning: !!returning, tpl: P.template, answers: {}, contact: {}, privacyAt: null };
+    return {};
+  }
   screens.kPrivacy = {
     html: () => `${kbar("Before you start")}
       <div class="card agree" style="max-height:none;font-size:22px"><p>${esc(privacyText())}</p></div>
@@ -185,7 +190,7 @@ const Consent = (() => {
     bind(root) {
       const b = $("#kNext", root);
       $("#privOk", root).onchange = e => { b.disabled = !e.target.checked; };
-      b.onclick = () => { K.privacyAt = new Date().toISOString(); go("kReview"); };
+      b.onclick = () => { K.privacyAt = new Date().toISOString(); go(K.mode === "intake" ? "iInfo" : "kReview"); };
     }
   };
 
@@ -215,7 +220,7 @@ const Consent = (() => {
   };
   screens.kQuestions = {
     html: () => `${kbar(K.tpl.title)}${K.tpl.sections.map(s => `<div class="card"><strong>${esc(s.heading)}</strong>${s.questions.map(qHtml).join("")}</div>`).join("")}
-      <div id="kErr"></div><div class="actions"><button class="ghost" data-go="kReview">‹ Back</button><button class="primary" id="kNext">Continue</button></div>`,
+      <div id="kErr"></div><div class="actions"><button class="ghost" data-go="${K.mode === "intake" ? "iInfo" : "kReview"}">‹ Back</button><button class="primary" id="kNext">Continue</button></div>`,
     bind(root) {
       root.addEventListener("click", e => {
         const b = e.target.closest(".yn button"); if (!b) return;
@@ -255,11 +260,27 @@ const Consent = (() => {
       $("#sigClear", root).onclick = () => pad.clear();
       submit.onclick = async () => {
         submit.disabled = true; submit.textContent = "Saving…";
-        try { const docId = await finish(pad.data()); go("kDone", { id: docId }); }
+        try { const docId = K.mode === "intake" ? await finishIntake(pad.data()) : await finish(pad.data()); go("kDone", { id: docId }); }
         catch (e) { $("#kErr", root).innerHTML = `<div class="banner bad">Could not save: ${esc(e.message)}. Please tell the artist.</div>`; submit.disabled = false; submit.textContent = "Agree and submit"; }
       };
     }
   };
+
+  /* Intake side: build the PDF and consent entirely from what the client typed, then SEAL it. Nothing is read from the store. */
+  async function finishIntake(signature) {
+    const now = new Date().toISOString(), c = K.client, docId = crypto.randomUUID(), sessId = crypto.randomUUID();
+    const ageAtSigning = ageOn(c.dob);
+    const idCheck = K.scan ? { at: now, method: "pdf417-barcode", idState: K.scan.idState, idExpiry: K.scan.idExpiry, idExpired: K.scan.idExpired,
+      calculatedAge: ageAtSigning, minAge: settings.minAge, visuallyMatched: false, authenticityChecked: false } : null;
+    const privacy = { text: privacyText(), at: K.privacyAt || now };
+    const session = { id: sessId, createdAt: now, flashId: K.flashId, flashName: K.flashName };
+    const bytes = await buildPdf({ business: settings.business, minAge: settings.minAge, client: c, session, tpl: K.tpl, answers: K.answers,
+      signature, signedAt: now, docId, ageAtSigning, idCheck, privacy });
+    const sha256 = hex(await crypto.subtle.digest("SHA-256", bytes));
+    await DB.seal({ v: 1, submittedAt: now, returning: K.returning, client: c, idCheck, session,
+      consent: { id: docId, signedAt: now, template: K.tpl, answers: K.answers, signature, idCheck, ageAtSigning, privacy, pdf: bytesToB64(bytes), sha256 } });
+    return docId;
+  }
 
   async function finish(signature) {
     const now = new Date().toISOString();
@@ -288,7 +309,7 @@ const Consent = (() => {
   screens.kDone = {
     html: () => `${kbar("")}<div class="pin" style="max-width:520px"><h1>Thank you!</h1>
       <p class="mute">Your paperwork is complete. Please hand the iPad back to your artist.</p></div>`,
-    bind() { K = null; setTimeout(() => { if (cur.name === "kDone") lock(); }, 6000); }
+    bind() { const intake = K && K.mode === "intake"; K = null; setTimeout(() => { if (cur.name === "kDone") (intake ? go("iWelcome") : lock()); }, 6000); }
   };
 
   /* ---------- documents (admin) ---------- */
@@ -329,6 +350,6 @@ const Consent = (() => {
     }
   };
 
-  document.addEventListener("click", e => { if (e.target.closest("#kStaff")) lock(); });
-  return { init, start, docs, fileName, blobUrl, stamp, activeTemplate, defaultPrivacy: DEFAULT_PRIVACY };
+  document.addEventListener("click", e => { if (e.target.closest("#kStaff")) { K = null; DB.isUnlocked() ? lock() : showPin("unlock"); } });
+  return { K: () => K, startIntake, buildPdf, privacyText, init, start, docs, fileName, blobUrl, stamp, activeTemplate, defaultPrivacy: DEFAULT_PRIVACY };
 })();
