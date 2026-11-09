@@ -395,7 +395,7 @@ const Consent = (() => {
   const emailNotice = () => {
     const em = K.mode === "intake" ? (K.client || {}).email : (K.contact || {}).email;
     const relay = K.mode === "intake" ? K.relayConfigured : Mailer.configured(Mailer.relayFromSettings());
-    return em && relay ? `<div class="banner ok" style="font-weight:400">A copy of this signed agreement will be emailed to <b>${esc(em)}</b>.</div>`
+    return em && relay ? `<div class="banner ok" style="font-weight:400">A copy of this signed agreement will be emailed to <b>${esc(em)}</b>. If you do not see it soon, please check your junk or spam folder.</div>`
       : `<div class="banner warn" style="font-weight:400">${em && !relay ? "Ask the artist for a copy." : "You did not give an email address, so no copy will be emailed. Please ask the artist for a copy."}</div>`;
   };
   screens.kSign = {
