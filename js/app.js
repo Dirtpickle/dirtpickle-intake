@@ -374,12 +374,31 @@ screens.settings = {
       <label style="display:flex;gap:12px;align-items:center;color:var(--fg)"><input id="evTaken" type="checkbox" style="width:28px;height:28px" ${(settings.event || {}).markTaken === false ? "" : "checked"}> Mark a flash design unavailable once someone picks it</label>
       <label for="autoLock">Auto-lock after (minutes of no activity)</label><input id="autoLock" type="number" inputmode="numeric" min="1" max="120" value="${settings.autoLockMin}">
       <div class="actions"><button class="primary" id="saveSettings">Save settings</button><span id="setMsg" class="mute" style="align-self:center"></span></div></div>
+    <div class="card"><strong>Artist signature and initials</strong>
+      <p class="mute" style="font-size:16px">Used on contracts you print and when you countersign a signed contract. Stored encrypted. Never available to the intake side.</p>
+      <label>Signature ${settings.artistSignature ? "(saved. Draw again to replace it)" : "(not saved yet)"}</label>
+      ${settings.artistSignature ? `<img src="${settings.artistSignature}" alt="" style="background:#fff;border-radius:10px;max-width:320px;width:100%;display:block;margin-bottom:8px">` : ""}
+      <canvas id="aSig" class="sig" style="height:150px"></canvas>
+      <div class="actions" style="margin-top:8px"><button class="small ghost" id="aSigClear">Clear</button><button class="small primary" id="aSigSave" disabled>Save signature</button></div>
+      <label>Initials ${settings.artistInitials ? "(saved. Draw again to replace them)" : "(not saved yet)"}</label>
+      ${settings.artistInitials ? `<img src="${settings.artistInitials}" alt="" style="background:#fff;border-radius:10px;max-width:200px;width:100%;display:block;margin-bottom:8px">` : ""}
+      <canvas id="aInit" class="sig" style="height:110px;max-width:340px"></canvas>
+      <div class="actions" style="margin-top:8px"><button class="small ghost" id="aInitClear">Clear</button><button class="small primary" id="aInitSave" disabled>Save initials</button></div>
+      <label style="display:flex;gap:12px;align-items:center;color:var(--fg)"><input id="printSigned" type="checkbox" style="width:26px;height:26px" ${settings.printWithSignature === false ? "" : "checked"}> Put my signature and initials on contracts I print</label>
+      <div id="aMsg"></div></div>
     <div class="card"><button data-go="formEditor" style="width:100%">Edit consent form</button>
       <button id="printBlank" style="width:100%;margin-top:12px">Print blank contract (wet ink)</button></div>
     <div class="card"><button data-go="backup" style="width:100%">Backup, restore and change PIN</button></div>
     <div class="card mute">Gmail settings, appointments and aftercare documents are not built yet.</div>`,
   bind(root) {
     $("#printBlank", root).onclick = () => Consent.printPaper();
+    const wirePad = (canvasId, saveId, clearId, key, label) => {
+      const btn = $(saveId, root), pad = Consent.sigPad($(canvasId, root), ok => { btn.disabled = !ok; }, { transparent: true });
+      $(clearId, root).onclick = () => pad.clear();
+      btn.onclick = async () => { settings = { ...settings, [key]: pad.data() }; await DB.put(settings); go("settings"); };
+    };
+    wirePad("#aSig", "#aSigSave", "#aSigClear", "artistSignature"); wirePad("#aInit", "#aInitSave", "#aInitClear", "artistInitials");
+    $("#printSigned", root).onchange = async e => { settings = { ...settings, printWithSignature: e.target.checked }; await DB.put(settings); };
     $("#saveSettings", root).onclick = async () => {
       const minAge = Math.max(0, Math.min(99, parseInt($("#minAge", root).value, 10) || 18));
       const autoLockMin = Math.max(1, Math.min(120, parseInt($("#autoLock", root).value, 10) || 5));

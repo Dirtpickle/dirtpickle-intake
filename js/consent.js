@@ -19,7 +19,7 @@ const Consent = (() => {
   const b64ToBytes = b64 => Uint8Array.from(atob(b64), c => c.charCodeAt(0));
   const bytesToB64 = u8 => { let s = ""; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); };
   const clean = s => String(s ?? "").replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[–—]/g, "-")
-    .replace(/[^\x20-\x7e\xa0-\xff]/g, "?");
+    .replace(/[^\x20-\x7e\xa0-\xff\u2022]/g, "?");
   const stamp = iso => new Date(iso).toLocaleString(undefined, { dateStyle: "long", timeStyle: "short" });
 
   /* ---------- PDF ---------- */
@@ -56,7 +56,7 @@ const Consent = (() => {
     text(d.tpl.title, { f: bold, size: 14, gap: 4 });
     if (d.tpl.intro) text(d.tpl.intro, { size: 9.5, color: GREY, gap: 4 });
     if (d.artist) text(`Tattoo artist: ${d.artist}`, { f: bold, size: 10 });
-    text(`Signed ${stamp(d.signedAt)}   |   Template: ${d.tpl.name} (v${d.tpl.version})`, { size: 9, color: GREY });
+    text(`Signed ${stamp(d.signedAt)}${d.counter ? `   |   Countersigned ${stamp(d.counter.at)}` : ""}   |   Template: ${d.tpl.name} (v${d.tpl.version})`, { size: 9, color: GREY });
 
     heading("Client");
     const c = d.client;
@@ -111,6 +111,31 @@ const Consent = (() => {
     y -= sh + 16;
     text(`${c.legalName}   |   ${stamp(d.signedAt)}`, { size: 10 });
 
+    if (d.counter) {
+      const cs = d.counter, rec = cs.record || {}, ses = cs.session || {}, tat = ses.tattoo || {};
+      heading("Tattoo artist acknowledgment");
+      text("I acknowledge that I reviewed the required client information, verified the client's age, addressed relevant safety concerns, obtained consent, and provided or arranged for appropriate aftercare instructions.", { size: 9.5, gap: 6 });
+      const aimg = await pdf.embedPng(cs.signature), aw = 200, ah = Math.min(70, aw * aimg.height / aimg.width);
+      need(ah + 36); page.drawImage(aimg, { x: M, y: y - ah, width: aw, height: ah });
+      page.drawLine({ start: { x: M, y: y - ah - 2 }, end: { x: M + 260, y: y - ah - 2 }, thickness: 0.6, color: GREY }); y -= ah + 6;
+      text(`${d.artist || d.business}   |   ${stamp(cs.at)}`, { size: 10 });
+      heading("Artist use only - procedure record");
+      const times = (ses.segments || []).filter(x => x.s);
+      kv("Stencil / design reference", ses.flashName || tat.description);
+      kv("Tattoo location", tat.location); kv("Approximate size", tat.size);
+      kv("Procedure start", times.length ? stamp(times[0].s) : ""); kv("Procedure end", ses.endedAt ? stamp(ses.endedAt) : "");
+      kv("Needle / cartridge type", rec.needleType); kv("Needle / cartridge lot", rec.needleLot);
+      kv("Ink brand(s)", rec.inkBrand); kv("Pigment / color(s)", rec.pigment); kv("Ink lot / batch", rec.inkLot); kv("Ink expiration", rec.inkExp);
+      kv("Barrier / dressing used", rec.barrier);
+      kv("Aftercare instructions provided", rec.aftercareProvided ? "Yes" : "No"); kv("Final procedure photograph taken", rec.finalPhoto ? "Yes" : "No");
+      kv("Notes / complications", rec.complications);
+      kv("Final payment collected", ses.paid !== "" && ses.paid != null ? `$${ses.paid}${ses.payMethod ? " (" + ses.payMethod + ")" : ""}` : "");
+      if (cs.initials) {
+        const iimg = await pdf.embedPng(cs.initials), iw = 70, ih = Math.min(34, iw * iimg.height / iimg.width);
+        need(ih + 30); y -= 6; text("Artist initials:", { f: bold, size: 10, gap: 4 }); page.drawImage(iimg, { x: M, y: y - ih, width: iw, height: ih }); y -= ih + 4;
+      }
+    }
+
     const pages = pdf.getPages();
     pages.forEach((p, i) => p.drawText(clean(`${d.business} | ${d.tpl.docVersion ? d.tpl.docVersion + " | " : ""}Document ${d.docId} | Page ${i + 1} of ${pages.length}`),
       { x: M, y: 28, size: 8, font, color: GREY }));
@@ -159,6 +184,12 @@ const Consent = (() => {
       y -= ls.length * 12 + 6;
     };
 
+    const sigImg = d.artistSig ? await pdf.embedPng(d.artistSig) : null, initImg = d.artistInit ? await pdf.embedPng(d.artistInit) : null;
+    const stamp_ = (img, label, maxW, maxH, short) => {
+      if (!img) return;
+      const lw = bold.widthOfTextAtSize(clean(label), 10), x0 = M + lw + 10, k = Math.min(maxW / img.width, maxH / img.height);
+      page.drawImage(img, { x: x0, y: y + 11, width: img.width * k, height: img.height * k });
+    };
     newPage();
     page.drawRectangle({ x: 0, y: H - 14, width: W, height: 14, color: INK });
     page.drawRectangle({ x: 0, y: H - 18, width: W, height: 4, color: PINK });
@@ -195,13 +226,13 @@ const Consent = (() => {
     line("Signature:", ""); line("Printed name:", c.legalName); line("Date:", ""); line("Time:", "");
     heading("Tattoo artist acknowledgment");
     text("I acknowledge that I reviewed the required client information, verified the client's age, addressed relevant safety concerns, obtained consent, and provided or arranged for appropriate aftercare instructions.", { size: 9.5, gap: 6 });
-    line("Artist signature:", ""); line("Date:", "");
+    line("Artist signature:", ""); stamp_(sigImg, "Artist signature:", 170, 34); line("Date:", "");
     heading("Artist use only - procedure record");
     for (const l of ["Stencil / design reference:", "Tattoo location:", "Procedure start time:", "Procedure end time:", "Needle / cartridge type:", "Needle / cartridge lot:",
       "Ink brand(s):", "Pigment / color(s):", "Ink lot / batch number(s):", "Ink expiration date(s):", "Barrier / dressing used:"]) line(l, "");
     yesNo("Aftercare instructions provided"); yesNo("Final procedure photograph taken");
     text("Additional notes / complications:", { f: bold, size: 10, gap: 4 }); line("", ""); line("", "");
-    line("Final payment collected: $", ""); line("Artist initials:", "", true);
+    line("Final payment collected: $", ""); line("Artist initials:", "", true); stamp_(initImg, "Artist initials:", 70, 30, true);
 
     const pages = pdf.getPages();
     pages.forEach((p, i) => p.drawText(clean(`${d.business} | ${d.tpl.docVersion ? d.tpl.docVersion + " | " : ""}Page ${i + 1} of ${pages.length}`), { x: M, y: 28, size: 8, font, color: GREY }));
@@ -210,17 +241,19 @@ const Consent = (() => {
   }
   async function printPaper(clientId) {
     const tpl = activeTemplate();
-    const bytes = await buildPaperPdf({ business: settings.business, artist: settings.artistName, tpl, client: clientId ? DB.get(clientId) : null });
+    const withSig = settings.printWithSignature !== false;
+    const bytes = await buildPaperPdf({ business: settings.business, artist: settings.artistName, tpl, client: clientId ? DB.get(clientId) : null,
+      artistSig: withSig ? settings.artistSignature : null, artistInit: withSig ? settings.artistInitials : null });
     window.open(URL.createObjectURL(new Blob([bytes], { type: "application/pdf" })), "_blank");
   }
 
   /* ---------- signature pad ---------- */
-  function sigPad(canvas, onChange) {
+  function sigPad(canvas, onChange, opts = {}) {
     const ctx = canvas.getContext("2d");
     const r = canvas.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
     canvas.width = Math.round(r.width * dpr); canvas.height = Math.round(r.height * dpr);
     ctx.scale(dpr, dpr);
-    const blank = () => { ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, r.width, r.height); ctx.strokeStyle = "#000"; ctx.lineWidth = 3.2; ctx.lineCap = ctx.lineJoin = "round"; };
+    const blank = () => { if (opts.transparent) ctx.clearRect(0, 0, r.width, r.height); else { ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, r.width, r.height); } ctx.strokeStyle = "#000"; ctx.lineWidth = 3.2; ctx.lineCap = ctx.lineJoin = "round"; };
     blank();
     let down = false, last = null, len = 0;
     const pos = e => { const b = canvas.getBoundingClientRect(); return { x: e.clientX - b.left, y: e.clientY - b.top }; };
@@ -437,33 +470,66 @@ const Consent = (() => {
     html: () => `${bar("Documents", { back: "home" })}<div class="card">${docs().map(docRow).join("") || '<span class="mute">No signed documents yet.</span>'}</div>
       <div class="card mute">Email sending is not set up yet. Open a document to view, print, or share its PDF.</div>`
   };
+  async function countersign(consentId) {
+    const d = DB.get(consentId);
+    if (!d) throw new Error("Contract not found");
+    if (DB.get("cs-" + consentId)) throw new Error("This contract is already countersigned");
+    if (!settings.artistSignature) throw new Error("Save your signature in Settings first");
+    const session = DB.get(d.sessionId) || {}, cl = DB.get(d.clientId) || {};
+    const now = new Date().toISOString();
+    const idCheck = (cl.idChecks || []).slice(-1)[0] || d.idCheck;
+    const bytes = await buildPdf({ business: settings.business, minAge: settings.minAge, client: { ...d.clientSnapshot },
+      session: { id: d.sessionId, createdAt: session.createdAt || d.signedAt, flashName: session.flashName || "" }, tpl: d.template, answers: d.answers,
+      signature: d.signature, signedAt: d.signedAt, docId: d.id, ageAtSigning: d.ageAtSigning, idCheck, privacy: d.privacy, artist: settings.artistName,
+      counter: { signature: settings.artistSignature, initials: settings.artistInitials, at: now, record: session.record, session } });
+    const sha256 = hex(await crypto.subtle.digest("SHA-256", bytes));
+    await DB.put({ type: "countersign", id: "cs-" + consentId, locked: true, consentId, clientId: d.clientId, sessionId: d.sessionId, signedAt: now, pdf: bytesToB64(bytes), sha256 });
+  }
+
+  function wirePdf(root, rec, ids, name) {
+    $(ids.view, root).onclick = () => { window.open(blobUrl(rec), "_blank"); };
+    $(ids.save, root).onclick = async () => {
+      const file = new File([b64ToBytes(rec.pdf)], name, { type: "application/pdf" });
+      try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); return; } } catch (_) { return; }
+      const a = document.createElement("a"); a.href = blobUrl(rec); a.download = name; a.click();
+    };
+    $(ids.verify, root).onclick = async () => {
+      const h = hex(await crypto.subtle.digest("SHA-256", b64ToBytes(rec.pdf)));
+      $(ids.msg, root).innerHTML = h === rec.sha256 ? `<div class="banner ok">Intact. The PDF matches the fingerprint recorded when it was signed.</div>`
+        : `<div class="banner bad">Mismatch. This PDF does not match its recorded fingerprint.</div>`;
+    };
+  }
+
   screens.doc = {
     html({ id }) {
       const d = DB.get(id);
       if (!d) return `${bar("Document", { back: "documents" })}<div class="banner bad">Not found.</div>`;
-      return `${bar(esc(d.clientSnapshot.legalName), { back: "documents" })}<div class="card"><dl class="kv">
+      const cs = DB.get("cs-" + id);
+      return `${bar(esc(d.clientSnapshot.legalName), { back: "documents" })}<div class="card"><strong>Signed by the client</strong><dl class="kv" style="margin-top:8px">
         <dt>Signed</dt><dd>${esc(stamp(d.signedAt))}</dd><dt>Form</dt><dd>${esc(d.template.title)} v${d.template.version}</dd>
         <dt>Document ID</dt><dd>${esc(d.id)}</dd><dt>SHA-256</dt><dd style="font-size:13px">${esc(d.sha256)}</dd><dt>Email</dt><dd>${esc(d.emailStatus)}</dd></dl>
         <div class="actions"><button class="primary" id="dView">View / Print</button><button id="dSave">Download / Share</button><button id="dVerify">Verify integrity</button></div>
         <div id="dMsg" style="margin-top:12px"></div></div>
-        <div class="card mute">This is a locked record. It cannot be edited. If something was wrong, have the client sign a new form.</div>`;
+        <div class="card"><strong>Artist countersignature</strong>
+        ${cs ? `<dl class="kv" style="margin-top:8px"><dt>Countersigned</dt><dd>${esc(stamp(cs.signedAt))}</dd><dt>SHA-256</dt><dd style="font-size:13px">${esc(cs.sha256)}</dd></dl>
+          <div class="actions"><button class="primary" id="cView">View / Print final contract</button><button id="cSave">Download / Share</button><button id="cVerify">Verify integrity</button></div><div id="cMsg" style="margin-top:12px"></div>`
+        : `<p class="mute" style="font-size:16px">Adds your saved signature and initials, plus the procedure record from the session, to a final copy of this contract. The client's signed original stays unchanged.</p>
+          <div class="actions"><button class="primary" id="cSign">Countersign this contract</button></div><div id="cMsg" style="margin-top:12px"></div>`}</div>
+        <div class="card mute">These are locked records. They cannot be edited. If something was wrong, have the client sign a new form.</div>`;
     },
     bind(root, { id }) {
       const d = DB.get(id); if (!d) return;
-      $("#dView", root).onclick = () => { window.open(blobUrl(d), "_blank"); };
-      $("#dSave", root).onclick = async () => {
-        const file = new File([b64ToBytes(d.pdf)], fileName(d), { type: "application/pdf" });
-        try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: fileName(d) }); return; } } catch (_) { return; }
-        const a = document.createElement("a"); a.href = blobUrl(d); a.download = fileName(d); a.click();
-      };
-      $("#dVerify", root).onclick = async () => {
-        const h = hex(await crypto.subtle.digest("SHA-256", b64ToBytes(d.pdf)));
-        $("#dMsg", root).innerHTML = h === d.sha256 ? `<div class="banner ok">Intact. The PDF matches the fingerprint recorded when it was signed.</div>`
-          : `<div class="banner bad">Mismatch. This PDF does not match its recorded fingerprint.</div>`;
+      wirePdf(root, d, { view: "#dView", save: "#dSave", verify: "#dVerify", msg: "#dMsg" }, fileName(d));
+      const cs = DB.get("cs-" + id);
+      if (cs) wirePdf(root, cs, { view: "#cView", save: "#cSave", verify: "#cVerify", msg: "#cMsg" }, fileName(d).replace(".pdf", "-countersigned.pdf"));
+      else $("#cSign", root).onclick = async () => {
+        if (!settings.artistSignature) { $("#cMsg", root).innerHTML = `<div class="banner warn">Save your signature first: Settings, then Artist signature and initials.</div>`; return; }
+        if (!confirm("Countersign this contract with your saved signature? It confirms you reviewed the client information, verified age, addressed safety concerns, obtained consent, and provided aftercare.")) return;
+        try { await countersign(id); go("doc", { id }); } catch (e) { $("#cMsg", root).innerHTML = `<div class="banner bad">${esc(e.message)}</div>`; }
       };
     }
   };
 
   document.addEventListener("click", e => { if (e.target.closest("#kStaff")) { K = null; DB.isUnlocked() ? lock() : showPin("unlock"); } });
-  return { printPaper, K: () => K, startIntake, buildPdf, privacyText, init, start, docs, fileName, blobUrl, stamp, activeTemplate, defaultPrivacy: DEFAULT_PRIVACY };
+  return { sigPad, countersign, printPaper, K: () => K, startIntake, buildPdf, privacyText, init, start, docs, fileName, blobUrl, stamp, activeTemplate, defaultPrivacy: DEFAULT_PRIVACY };
 })();

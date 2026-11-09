@@ -126,6 +126,7 @@ const Sessions = (() => {
       return `${bar(esc(clientName(s.clientId)), { back: "queue" })}
         <div class="card"><div class="mute">${LABEL[s.status]}${s.flashName ? " · Flash: " + esc(s.flashName) : ""}</div>
           <div class="timer" id="timer">${fmt(elapsed(s))}</div>
+          ${s.consentId ? `<div class="actions" style="margin-top:0"><button data-go="doc" data-id="${esc(s.consentId)}">Signed contract / countersign</button></div>` : ""}
           <div class="actions" style="margin-top:0">
             ${s.status === "inprogress" ? (running(s) ? `<button id="tPause">Pause (break)</button>` : `<button class="primary" id="tResume">Resume</button>`) : ""}
             ${["ready", "waiting", "paperwork"].includes(s.status) ? `<button class="primary" id="tStart">Start tattoo</button>` : ""}
