@@ -11,11 +11,14 @@ const Backup = (() => {
   const decBox = b => ({ iv: b64ToU8(b.iv), data: b64ToU8(b.data).buffer });
 
   async function create() {
-    const { auth, recs } = await DB.exportRaw();
+    const { auth, recs, keys, inbox, pub } = await DB.exportRaw();
     const body = {
-      format: "dirtpickle-backup", version: 1, createdAt: new Date().toISOString(), count: recs.length,
+      format: "dirtpickle-backup", version: 2, createdAt: new Date().toISOString(), count: recs.length + inbox.length,
       auth: { salt: u8ToB64(auth.salt), check: encBox(auth.check), pinLength: auth.pinLength },
-      records: recs.map(r => ({ id: r.id, type: r.type, ...encBox(r) }))
+      records: recs.map(r => ({ id: r.id, type: r.type, ...encBox(r) })),
+      keys: keys ? { pub: u8ToB64(keys.pub), wrappedPriv: encBox(keys.wrappedPriv) } : null,
+      inbox: inbox.map(i => ({ id: i.id, createdAt: i.createdAt, iv: u8ToB64(i.iv), data: u8ToB64(new Uint8Array(i.data)), wk: u8ToB64(new Uint8Array(i.wk)) })),
+      public: pub || null
     };
     const text = JSON.stringify(body);
     return JSON.stringify({ ...body, sha256: await sha(text) });
@@ -30,7 +33,12 @@ const Backup = (() => {
     return {
       meta: j,
       auth: { salt: b64ToU8(j.auth.salt), check: decBox(j.auth.check), pinLength: j.auth.pinLength },
-      recs: j.records.map(r => ({ id: r.id, type: r.type, ...decBox(r) }))
+      recs: j.records.map(r => ({ id: r.id, type: r.type, ...decBox(r) })),
+      extra: {
+        keys: j.keys ? { pub: b64ToU8(j.keys.pub), wrappedPriv: decBox(j.keys.wrappedPriv) } : null,
+        inbox: (j.inbox || []).map(i => ({ id: i.id, createdAt: i.createdAt, iv: b64ToU8(i.iv), data: b64ToU8(i.data).buffer, wk: b64ToU8(i.wk).buffer })),
+        pub: j.public || null
+      }
     };
   }
 
@@ -44,9 +52,9 @@ const Backup = (() => {
     const t = await DB.testBackup(p.auth, p.recs, pin);
     if (!t.pinOk) throw new Error("That PIN does not open this backup.");
     if (t.readable !== t.total) throw new Error(`Only ${t.readable} of ${t.total} records in this backup are readable. Restore cancelled.`);
-    await DB.importRaw(p.auth, p.recs);
+    await DB.importRaw(p.auth, p.recs, p.extra);
     if (!(await DB.unlock(pin))) throw new Error("Restore wrote the data but could not unlock it. Do not close the app; contact support.");
-    return t.total;
+    return t.total + p.extra.inbox.length;
   }
 
   const days = iso => iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 86400000) : null;
