@@ -2,7 +2,7 @@
 /* Dirtpickle intake app: Phase 1 (shell, PIN, local encrypted DB, client intake + search). */
 const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const DEFAULTS = { type: "settings", id: "settings", business: "Dirtpickle", minAge: 18, autoLockMin: 5, backupDays: 7, lastBackupAt: null, artistName: "Dirtpickle (Mike Peterson)" };
+const DEFAULTS = { type: "settings", id: "settings", business: "Dirtpickle", minAge: 18, autoLockMin: 5, backupDays: 7, lastBackupAt: null, artistName: "Dirtpickle (Mike Peterson)", pricing: { rate: 120, round: 5 }, event: { hourlyApplies: false } };
 let settings = { ...DEFAULTS };
 
 /* ---------- helpers ---------- */
@@ -118,7 +118,10 @@ async function publishPublic() {
 }
 let intakeReady = false;
 async function afterUnlock() {
-  settings = { ...DEFAULTS, ...(DB.get("settings") || {}) };
+  const saved = DB.get("settings") || {};
+  settings = { ...DEFAULTS, ...saved,
+    pricing: { ...DEFAULTS.pricing, ...(saved.pricing || {}) },
+    event: { ...DEFAULTS.event, ...(saved.event || {}) } };
   await Consent.init();
   await Aftercare.init();
   await publishPublic(); intakeReady = true;
@@ -405,6 +408,9 @@ screens.settings = {
       <label for="evMin">Flash minimum price ($)</label><input id="evMin" type="number" inputmode="decimal" value="${(settings.event || {}).minPrice ?? 80}">
       <label for="evMax">Flash maximum price ($)</label><input id="evMax" type="number" inputmode="decimal" value="${(settings.event || {}).maxPrice ?? 150}">
       <label style="display:flex;gap:12px;align-items:center;color:var(--fg)"><input id="evTaken" type="checkbox" style="width:28px;height:28px" ${(settings.event || {}).markTaken === false ? "" : "checked"}> Mark a flash design unavailable once someone picks it</label>
+      <label style="display:flex;gap:12px;align-items:center;color:var(--fg)"><input id="evHourly" type="checkbox" style="width:28px;height:28px" ${(settings.event || {}).hourlyApplies ? "checked" : ""}> Hourly pricing applies to event sessions</label>
+      <hr><strong>Pricing</strong>
+      ${Pricing.settingsHtml(settings)}
       <label for="autoLock">Auto-lock after (minutes of no activity)</label><input id="autoLock" type="number" inputmode="numeric" min="1" max="120" value="${settings.autoLockMin}">
       <hr><strong>Email relay</strong><p class="mute" style="font-size:16px">The relay URL and secret are encrypted with your PIN and never available during client check-in.</p>
       ${Mailer.settingsHtml()}
@@ -448,8 +454,8 @@ screens.settings = {
     $("#saveSettings", root).onclick = async () => {
       const minAge = Math.max(0, Math.min(99, parseInt($("#minAge", root).value, 10) || 18));
       const autoLockMin = Math.max(1, Math.min(120, parseInt($("#autoLock", root).value, 10) || 5));
-      settings = { ...Mailer.readSettings(root, settings), business: $("#biz", root).value.trim() || "Dirtpickle", artistName: $("#artist", root).value.trim() || DEFAULTS.artistName, minAge, autoLockMin,
-        event: { name: $("#evName", root).value.trim() || "Event", minPrice: parseFloat($("#evMin", root).value) || 0, maxPrice: parseFloat($("#evMax", root).value) || 0, markTaken: $("#evTaken", root).checked } };
+      settings = { ...Pricing.readSettings(root, Mailer.readSettings(root, settings)), business: $("#biz", root).value.trim() || "Dirtpickle", artistName: $("#artist", root).value.trim() || DEFAULTS.artistName, minAge, autoLockMin,
+        event: { name: $("#evName", root).value.trim() || "Event", minPrice: parseFloat($("#evMin", root).value) || 0, maxPrice: parseFloat($("#evMax", root).value) || 0, markTaken: $("#evTaken", root).checked, hourlyApplies: $("#evHourly", root).checked } };
       await DB.put(settings);
       await publishPublic();
       $("#setMsg", root).textContent = "Saved";

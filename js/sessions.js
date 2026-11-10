@@ -17,6 +17,10 @@ const Sessions = (() => {
   const running = s => segs(s).some(x => !x.e);
   const elapsed = s => segs(s).reduce((t, x) => t + ((x.e ? new Date(x.e) : new Date()) - new Date(x.s)), 0);
   const fmt = ms => { const t = Math.floor(ms / 1000), h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), s = t % 60; return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`; };
+  const shortDuration = ms => { const t = Math.floor(ms / 60000), h = Math.floor(t / 60), m = t % 60; return `${h}:${String(m).padStart(2, "0")}`; };
+  const hourlyApplies = s => (s.flashId ? ev().hourlyApplies === true : ev().hourlyApplies !== false);
+  const suggestion = s => s.status === "completed" && hourlyApplies(s) && s.durationMs >= 0
+    ? Pricing.suggest(s.durationMs, (settings.pricing || {}).rate, { round: (settings.pricing || {}).round }) : null;
 
   /* ----- flash availability ----- */
   async function claimFlash(flashId, on) {
@@ -123,6 +127,8 @@ const Sessions = (() => {
       if (!s) return `${bar("Session", { back: "queue" })}<div class="banner bad">Not found.</div>`;
       const t = s.tattoo || {};
       const f = (k, l, v, a = "") => `<label for="s_${k}">${l}</label><input id="s_${k}" value="${esc(v)}" ${a}>`;
+      const suggested = suggestion(s);
+      const pricing = { ...Pricing.defaults, ...(settings.pricing || {}) };
       return `${bar(esc(clientName(s.clientId)), { back: "queue" })}
         <div class="card"><div class="mute">${LABEL[s.status]}${s.flashName ? " · Flash: " + esc(s.flashName) : ""}</div>
           <div class="timer" id="timer">${fmt(elapsed(s))}</div>
@@ -132,7 +138,7 @@ const Sessions = (() => {
             ${["ready", "waiting", "paperwork"].includes(s.status) ? `<button class="primary" id="tStart">Start tattoo</button>` : ""}
             ${s.status === "inprogress" ? `<button class="primary" id="tDone">Finish tattoo</button>` : ""}</div></div>
         <div class="cols"><div>${f("description", "Tattoo description", t.description)}${f("location", "Body location", t.location)}${f("size", "Approximate size", t.size)}</div>
-          <div>${f("price", "Price", s.price, 'inputmode="decimal"')}${f("deposit", "Deposit", s.deposit, 'inputmode="decimal"')}${f("paid", "Amount paid", s.paid, 'inputmode="decimal"')}
+          <div>${f("price", "Price", s.price, 'inputmode="decimal"')}${suggested !== null ? `<div class="mute" id="priceSuggestion">Suggested: $${suggested} (${shortDuration(s.durationMs)} at $${pricing.rate}/hr) <button type="button" class="small" id="useSuggested">Use suggested</button></div>` : ""}${f("deposit", "Deposit", s.deposit, 'inputmode="decimal"')}${f("paid", "Amount paid", s.paid, 'inputmode="decimal"')}
             <label for="s_payMethod">Payment method</label><select id="s_payMethod">${["", "Cash", "Card", "Venmo / Cash App", "Other"].map(o => `<option ${o === (s.payMethod || "") ? "selected" : ""}>${o}</option>`).join("")}</select></div></div>
         <div class="card" style="margin-top:16px"><strong>Procedure record (artist use)</strong>
           <div class="cols"><div>${f("needleType", "Needle / cartridge type", (s.record || {}).needleType)}${f("needleLot", "Needle / cartridge lot", (s.record || {}).needleLot)}${f("barrier", "Barrier / dressing used", (s.record || {}).barrier)}</div>
@@ -156,6 +162,7 @@ const Sessions = (() => {
           artistAck: $("#s_ack", root).checked, artistAckAt: $("#s_ack", root).checked ? (((DB.get(id) || {}).record || {}).artistAckAt || new Date().toISOString()) : null },
         price: v("price"), deposit: v("deposit"), paid: v("paid"), payMethod: $("#s_payMethod", root).value, notes: $("#s_notes", root).value });
       $("#sSave", root).onclick = async () => { await saveFields(); $("#sMsg", root).textContent = "Saved"; };
+      $("#useSuggested", root)?.addEventListener("click", () => { $("#s_price", root).value = suggestion(DB.get(id)); });
       $("#acGive", root).onclick = async () => {
         try { await saveFields(); await Aftercare.give(id, $("#acPick", root).value); go("session", { id }); }
         catch (e) { alert(e.message); }
