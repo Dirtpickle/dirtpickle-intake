@@ -43,17 +43,26 @@ async function makeSignature(page, selector = "#sig") {
   await page.mouse.up();
 }
 
+async function drawInitials(page, selector) {
+  const canvas = page.locator(selector);
+  await page.evaluate(value => document.querySelector(value)?.scrollIntoView({ block: "center" }), selector);
+  const box = await canvas.boundingBox();
+  await page.mouse.move(box.x + 5, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width - 5, box.y + box.height / 2, { steps: 8 });
+  await page.mouse.up();
+}
+
 async function goHome(page) {
   await page.locator('[data-go="clients"]').click();
   await page.locator('[data-go="home"]').click();
 }
 
 async function answerContract(page) {
-  await page.locator("[data-all]").evaluateAll(buttons => buttons.forEach(b => b.click()));
   await page.locator(".yn [data-v='no']").evaluateAll(buttons => buttons.forEach(b => b.click()));
   await page.locator(".choice button").evaluateAll(buttons => buttons.filter((b, i) => i === 0 || !b.parentElement.querySelector(".primary")).forEach(b => b.click()));
   for (const box of await page.locator("input[type=checkbox]").all()) await box.check();
-  for (const input of await page.locator("[data-i]").all()) await input.fill("AE");
+  for (const canvas of await page.locator("[data-initials]").all()) await drawInitials(page, await canvas.getAttribute("data-initials").then(si => `[data-initials="${si}"]`));
   await page.evaluate(() => {
     const k = Consent.K();
     k.tpl.sections.forEach((section, si) => {
@@ -62,7 +71,6 @@ async function answerContract(page) {
         if (q.type === "yesno") k.answers[q.id] = { v: "no" };
         if (q.type === "choice") k.answers[q.id] = { v: q.options[0] };
       });
-      if (section.initials) k.answers["init:" + si] = { v: "AE" };
     });
   });
 }

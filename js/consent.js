@@ -85,7 +85,7 @@ const Consent = (() => {
     heading("Session");
     kv("Session ID", d.session.id); kv("Date", stamp(d.session.createdAt)); kv("Flash design", d.session.flashName);
 
-    d.tpl.sections.forEach((sec, si) => {
+    for (const [si, sec] of d.tpl.sections.entries()) {
       heading(sec.heading);
       for (const l of (sec.body || [])) {
         if (l.startsWith("- ")) text("\u2022 " + l.slice(2), { size: 9.5, indent: 10, gap: 2 });
@@ -99,8 +99,18 @@ const Consent = (() => {
         if (a.d) ans += ` (${a.d})`;
         text(q.label, { f: bold, size: 9.5, gap: 2 }); text(ans, { indent: 12, gap: 4, size: 9.5 });
       }
-      if (sec.initials) text(`Client initials: ${(d.answers["init:" + si] || {}).v || "-"}`, { f: bold, size: 10 });
-    });
+      if (sec.initials) {
+        const initials = d.answers["init:" + si] || {};
+        if (initials.img) {
+          const iimg = await pdf.embedPng(initials.img);
+          const iw = 70, ih = Math.min(34, iw * iimg.height / iimg.width);
+          need(ih + 24); text("Client initials:", { f: bold, size: 10, gap: 4 });
+          page.drawImage(iimg, { x: M, y: y - ih, width: iw, height: ih }); y -= ih + 4;
+        } else {
+          text(`Client initials: ${initials.v || "-"}`, { f: bold, size: 10 });
+        }
+      }
+    }
 
     heading("Agreement");
     for (const p of d.tpl.agreement) { text(p, { gap: 4 }); y -= 3; }
@@ -348,7 +358,7 @@ const Consent = (() => {
         ${s.body && s.body.length ? `<div class="secbody">${bodyHtml(s.body)}</div>` : ""}
         ${s.questions.map(qHtml).join("")}
         ${s.questions.filter(q => q.type === "check").length > 1 ? `<button class="small ghost" data-all="${si}" style="margin-top:8px">Tick all in this section</button>` : ""}
-        ${s.initials ? `<div class="qrow"><div class="ql">Your initials *</div><input data-i="${si}" maxlength="4" autocapitalize="characters" value="${esc((K.answers["init:" + si] || {}).v)}" style="width:180px;text-transform:uppercase"></div>` : ""}</div>`).join("")}
+        ${s.initials ? `<div class="qrow"><div class="ql">Draw your initials *</div><canvas data-initials="${si}" width="120" height="60" style="width:120px;height:60px;border:1px solid #999;background:#fff;touch-action:none"></canvas><button type="button" class="small ghost" data-initials-clear="${si}">Clear</button></div>` : ""}</div>`).join("")}
       <div id="kErr"></div><div class="actions"><button class="ghost" data-go="${K.mode === "intake" ? "iInfo" : "kReview"}">‹ Back</button><button class="primary" id="kNext">Continue</button></div>`,
     bind(root) {
       root.addEventListener("click", e => {
@@ -370,10 +380,19 @@ const Consent = (() => {
         if (all) root.querySelectorAll(`.sec[data-si="${all.dataset.all}"] input[type=checkbox]`).forEach(c => { c.checked = true; K.answers[c.dataset.q] = { v: true }; });
       });
       root.addEventListener("change", e => { const q = e.target.dataset.q; if (q && e.target.type === "checkbox") K.answers[q] = { v: e.target.checked }; });
+      root.querySelectorAll("[data-initials]").forEach(canvas => {
+        let pad;
+        pad = InitialsPad.create(canvas, valid => {
+          const si = canvas.dataset.initials;
+          if (valid) K.answers["init:" + si] = { img: pad.data() };
+          else delete K.answers["init:" + si];
+        });
+        const clear = root.querySelector(`[data-initials-clear="${canvas.dataset.initials}"]`);
+        if (clear) clear.onclick = () => pad.clear();
+      });
       root.addEventListener("input", e => {
         if (e.target.dataset.d) K.answers[e.target.dataset.d] = { ...(K.answers[e.target.dataset.d] || {}), d: e.target.value };
         if (e.target.dataset.t) K.answers[e.target.dataset.t] = { v: e.target.value };
-        if (e.target.dataset.i) K.answers["init:" + e.target.dataset.i] = { v: e.target.value.toUpperCase().trim() };
       });
       $("#kNext", root).onclick = () => {
         const errs = new Set();
@@ -384,7 +403,7 @@ const Consent = (() => {
             if (q.mustBe && a.v && a.v !== q.mustBe) errs.add("Please speak with the artist before continuing.");
             if (q.detail && a.v === "yes" && !(a.d || "").trim()) errs.add("Please add details where you answered Yes.");
           }
-          if (s.initials && !((K.answers["init:" + si] || {}).v || "").trim()) errs.add("Please add your initials in each section that asks for them.");
+          if (s.initials && !((K.answers["init:" + si] || {}).img)) errs.add("Please draw your initials in each section that asks for them.");
         });
         if (errs.size) { $("#kErr", root).innerHTML = `<div class="banner bad">${[...errs].map(esc).join("<br>")}</div>`; return; }
         go("kSign");

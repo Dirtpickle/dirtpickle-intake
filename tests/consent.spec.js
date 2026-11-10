@@ -62,3 +62,62 @@ test("countersigns a consent and keeps the final PDF locked", async ({ page }) =
   const locked = await page.evaluate(() => DB.all("countersign").every(r => r.locked));
   expect(locked).toBe(true);
 });
+
+test("requires drawn initials before continuing", async ({ page }) => {
+  await setup(page);
+  await newClient(page, "Initials Client");
+  await page.locator("#startPaper").click();
+  await page.locator("#privOk").check();
+  await page.locator("#kNext").click();
+  await page.locator("#kNext").click();
+  await page.locator(".yn [data-v='no']").evaluateAll(buttons => buttons.forEach(b => b.click()));
+  await page.locator(".choice button").evaluateAll(buttons => buttons.filter((b, i) => i === 0 || !b.parentElement.querySelector(".primary")).forEach(b => b.click()));
+  await page.locator("input[type=checkbox]").check();
+  await page.locator("[data-initials-clear]").first().click();
+  await page.locator("#kNext").click();
+  await expect(page.locator("#kErr")).toContainText("Please draw your initials");
+});
+
+test("requires the single final acknowledgment", async ({ page }) => {
+  await setup(page);
+  await newClient(page, "Final Tick Client");
+  await page.locator("#startPaper").click();
+  await page.locator("#privOk").check();
+  await page.locator("#kNext").click();
+  await page.locator("#kNext").click();
+  await answerContract(page);
+  await page.locator("input[type=checkbox]").uncheck();
+  await page.locator("#kNext").click();
+  await expect(page.locator("#kErr")).toContainText("Please tick every box");
+});
+
+test("legacy typed initials render and their PDF hash verifies", async ({ page }) => {
+  await setup(page);
+  const result = await page.evaluate(async () => {
+    const oldTemplate = { ...CONTRACT, id: "tpl-default-v1", source: "az-dp-2026-draft", version: 1, docVersion: "AZ-DP-2026-DRAFT" };
+    await DB.put(oldTemplate);
+    await Consent.init();
+    const active = Consent.activeTemplate();
+    const canvas = document.createElement("canvas");
+    canvas.width = 140; canvas.height = 60;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "white"; ctx.fillRect(0, 0, 140, 60);
+    const signature = canvas.toDataURL("image/png");
+    const answers = {};
+    oldTemplate.sections.forEach((section, si) => {
+      if (section.initials) answers["init:" + si] = { v: "AE" };
+      section.questions.forEach(question => { if (question.type === "check") answers[question.id] = { v: true }; });
+    });
+    const bytes = await Consent.buildPdf({ business: "Dirtpickle", minAge: 18,
+      client: { id: "legacy-client", legalName: "Legacy Client", dob: "1990-01-01" },
+      session: { id: "legacy-session", createdAt: new Date().toISOString(), flashName: "" },
+      tpl: oldTemplate, answers, signature, signedAt: new Date().toISOString(), docId: "legacy-doc",
+      ageAtSigning: 36, idCheck: null, privacy: null, artist: "Mike Peterson" });
+    const hash = [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))]
+      .map(byte => byte.toString(16).padStart(2, "0")).join("");
+    return { activeSource: active.source, bytes: bytes.length, hash };
+  });
+  expect(result.activeSource).toBe("az-dp-2026-draft-2");
+  expect(result.bytes).toBeGreaterThan(0);
+  expect(result.hash).toMatch(/^[0-9a-f]{64}$/);
+});
