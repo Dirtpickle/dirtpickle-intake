@@ -38,17 +38,22 @@ const Intake = (() => {
   };
 
   /* ----- your information ----- */
-  function shrink(file, max = 1200) {
+  function shrinkCanvas(file, max = 1200) {
     return new Promise((res, rej) => {
       const img = new Image(), url = URL.createObjectURL(file);
       img.onload = () => {
         const k = Math.min(1, max / Math.max(img.width, img.height)), c = document.createElement("canvas");
         c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
-        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url); res(c.toDataURL("image/jpeg", 0.8));
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url); res(c);
       };
       img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("bad image")); };
       img.src = url;
     });
+  }
+  function idPhotoNotice(K) {
+    if (!K.idPhotoCheck || !K.idPhotoCheck.warnings.length) return "";
+    const warnings = K.idPhotoCheck.warnings.map(esc).join("; ");
+    return `<div class="banner warn" style="margin-top:10px">This doesn't look like a license photo yet: ${warnings}. You can retake it, or continue.</div>`;
   }
   const dkeys = ["legalName", "preferredName", "dob", "phone", "email", "address", "emergencyName", "emergencyPhone"];
   const fld = (k, label, K, a = "") => `<label for="i_${k}">${label}</label><input id="i_${k}" value="${esc(K.client[k] || "")}" ${a}>`;
@@ -63,7 +68,7 @@ const Intake = (() => {
           ${K.scan ? `<div class="banner ok" style="margin:12px 0 0">✓ ID barcode read. Your details were filled in. Please check them. The artist will confirm your ID in person.</div>` : ""}</div>
         <div class="card"><strong>Photo of the FRONT of your license *</strong>
           <div class="actions" style="margin-top:10px"><label class="btn" style="display:inline-flex;align-items:center">${K.frontPhoto ? "Retake photo" : "Take photo"}<input id="iFront" type="file" accept="image/*" capture="environment" hidden></label></div>
-          ${K.frontPhoto ? `<img src="${K.frontPhoto}" alt="" style="max-width:320px;width:100%;border-radius:10px;margin-top:10px">` : ""}</div>
+          ${K.frontPhoto ? `<img src="${K.frontPhoto}" alt="" style="max-width:320px;width:100%;border-radius:10px;margin-top:10px">${idPhotoNotice(K)}` : ""}</div>
         <div class="cols"><div>${fld("legalName", "Full legal name *", K, 'autocapitalize="words"')}${fld("preferredName", "Preferred name", K, 'autocapitalize="words"')}
           <label for="i_dob">Date of birth *</label><input id="i_dob" type="date" value="${esc(K.client.dob || "")}">
           ${age !== null ? `<div class="banner ${under ? "bad" : "ok"}">${under ? `You must be at least ${settings.minAge} to get a tattoo here. Please see the artist.` : `Age ${age}`}</div>` : ""}</div>
@@ -78,7 +83,12 @@ const Intake = (() => {
       $("#iScanBtn", root).onclick = () => { collect(); go("iScan"); };
       $("#iFront", root).onchange = async e => {
         const f = e.target.files[0]; if (!f) return; collect();
-        try { K.frontPhoto = await shrink(f); go("iInfo"); } catch (err) { $("#iErr", root).innerHTML = `<div class="banner bad">Could not read that photo. Please try again.</div>`; }
+        try {
+          const canvas = await shrinkCanvas(f);
+          K.frontPhoto = canvas.toDataURL("image/jpeg", 0.8);
+          K.idPhotoCheck = IdCheck.analyze(canvas);
+          go("iInfo");
+        } catch (err) { $("#iErr", root).innerHTML = `<div class="banner bad">Could not read that photo. Please try again.</div>`; }
       };
       $("#iNext", root).onclick = () => {
         collect();

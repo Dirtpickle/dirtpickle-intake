@@ -448,7 +448,8 @@ const Consent = (() => {
     const bytes = await buildPdf({ business: settings.business, minAge: settings.minAge, client: c, session, tpl: K.tpl, answers: K.answers,
       signature, signedAt: now, docId, ageAtSigning, idCheck, privacy, artist: settings.artistName });
     const sha256 = hex(await crypto.subtle.digest("SHA-256", bytes));
-    await DB.seal({ v: 1, submittedAt: now, returning: K.returning, client: c, idCheck, idPhoto: K.frontPhoto, session,
+    await DB.seal({ v: 1, submittedAt: now, returning: K.returning, client: c, idCheck, idPhoto: K.frontPhoto,
+      ...(K.idPhotoCheck ? { idPhotoCheck: { score: K.idPhotoCheck.score } } : {}), session,
       consent: { id: docId, signedAt: now, template: K.tpl, answers: K.answers, signature, idCheck, ageAtSigning, privacy, pdf: bytesToB64(bytes), sha256 } });
     return docId;
   }
