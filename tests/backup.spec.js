@@ -3,9 +3,12 @@ const { setup, newClient, goHome } = require("./helpers/app");
 
 test("exports, wipes, and restores encrypted data; wrong PIN fails", async ({ page }) => {
   await setup(page);
+  await page.evaluate(async () => Events.create({ name: 'Backup Event', date: '2026-11-27' }));
   await newClient(page, "Backup Client");
   await goHome(page);
   const backupText = await page.evaluate(() => Backup.create());
+  const eventIncluded = await page.evaluate(async text => (await Backup.verify(text)).recs.some(r => r.type === "event"), backupText);
+  expect(eventIncluded).toBe(true);
   const wrong = await page.evaluate(async text => (await Backup.verify(text, "000000")).pinOk, backupText);
   expect(wrong).toBe(false);
   await page.evaluate(async () => { for (const c of DB.all("client")) await DB.remove(c.id, { force: true }); });

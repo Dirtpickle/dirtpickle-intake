@@ -10,12 +10,12 @@ test('pricing suggestion rounds to the nearest configured amount', async ({ page
 
 test('finished timed session offers a suggestion without overwriting price', async ({ page }) => {
   await setup(page);
+  await page.evaluate(async () => Events.create({ name: 'Hourly pricing', date: '2026-11-27', hourlyApplies: true }));
   await newClient(page, 'Pricing Client');
   await goHome(page);
   await page.locator('[data-go="settings"]').click();
   await page.locator('#hourlyRate').fill('120');
   await page.locator('#priceRound').fill('5');
-  await page.locator('#evHourly').check();
   await page.locator('#saveSettings').click();
   await page.locator('[data-go="home"]').click();
   await page.locator('[data-go="queue"]').click();
@@ -35,6 +35,7 @@ test('finished timed session offers a suggestion without overwriting price', asy
 
 test('flash session hides hourly suggestion until event pricing is enabled', async ({ page }) => {
   await setup(page);
+  await page.evaluate(async () => Events.create({ name: 'Flash pricing', date: '2026-11-27', hourlyApplies: false }));
   await newClient(page, 'Flash Pricing Client');
   await goHome(page);
   await page.evaluate(async () => {
@@ -52,10 +53,7 @@ test('flash session hides hourly suggestion until event pricing is enabled', asy
   await expect(page.locator('#priceSuggestion')).toHaveCount(0);
   await page.locator('[data-go="queue"]').click();
   await page.locator('[data-go="home"]').click();
-  await page.locator('[data-go="settings"]').click();
-  await page.locator('#evHourly').check();
-  await page.locator('#saveSettings').click();
-  await page.locator('[data-go="home"]').click();
+  await page.evaluate(async () => Events.update(Events.getActive().id, { hourlyApplies: true }));
   await page.locator('[data-go="queue"]').click();
   await page.locator('[data-go="session"]').click();
   await expect(page.locator('#priceSuggestion')).toBeVisible();

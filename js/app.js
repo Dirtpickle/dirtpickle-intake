@@ -2,7 +2,7 @@
 /* Dirtpickle intake app: Phase 1 (shell, PIN, local encrypted DB, client intake + search). */
 const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const DEFAULTS = { type: "settings", id: "settings", business: "Dirtpickle", minAge: 18, autoLockMin: 5, backupDays: 7, lastBackupAt: null, artistName: "Dirtpickle (Mike Peterson)", pricing: { rate: 120, round: 5 }, event: { hourlyApplies: false } };
+const DEFAULTS = { type: "settings", id: "settings", business: "Dirtpickle", minAge: 18, autoLockMin: 5, backupDays: 7, lastBackupAt: null, artistName: "Dirtpickle (Mike Peterson)", pricing: { rate: 120, round: 5 } };
 let settings = { ...DEFAULTS };
 
 /* ---------- helpers ---------- */
@@ -119,9 +119,8 @@ async function publishPublic() {
 let intakeReady = false;
 async function afterUnlock() {
   const saved = DB.get("settings") || {};
-  settings = { ...DEFAULTS, ...saved,
-    pricing: { ...DEFAULTS.pricing, ...(saved.pricing || {}) },
-    event: { ...DEFAULTS.event, ...(saved.event || {}) } };
+  settings = { ...DEFAULTS, ...saved, pricing: { ...DEFAULTS.pricing, ...(saved.pricing || {}) } };
+  settings = await Events.migrateLegacy(settings);
   await Consent.init();
   await Aftercare.init();
   await publishPublic(); intakeReady = true;
@@ -154,6 +153,7 @@ screens.home = {
       <button class="tile" data-go="returning">RETURNING CLIENT<small>Search name, phone or email</small></button>
       <button class="tile" data-go="clients">CLIENTS<small>${clients().length} on file</small></button>
       <button class="tile" data-go="queue">TODAY / QUEUE<small>${DB.all("session").filter(s => ["waiting", "paperwork", "ready", "inprogress"].includes(s.status)).length} active</small></button>
+      <button class="tile" data-go="events">EVENTS<small>${esc((Events.getActive() || {}).name || "No active event")}</small></button>
       <button class="tile soon">APPOINTMENTS<small>Coming in a later phase</small></button>
       <button class="tile" data-go="flash">FLASH<small>${DB.all("flash").length} designs</small></button>
       <button class="tile" data-go="documents">DOCUMENTS<small>${DB.all("consent").length} signed</small></button>
@@ -404,11 +404,6 @@ screens.settings = {
     <div class="card"><label for="biz" style="margin-top:0">Business name</label><input id="biz" value="${esc(settings.business)}">
       <label for="artist">Tattoo artist legal name / business entity (printed on contracts)</label><input id="artist" value="${esc(settings.artistName)}">
       <label for="minAge">Minimum client age</label><input id="minAge" type="number" inputmode="numeric" min="0" max="99" value="${settings.minAge}">
-      <label for="evName">Event name</label><input id="evName" value="${esc((settings.event || {}).name || "Black Friday Flash")}">
-      <label for="evMin">Flash minimum price ($)</label><input id="evMin" type="number" inputmode="decimal" value="${(settings.event || {}).minPrice ?? 80}">
-      <label for="evMax">Flash maximum price ($)</label><input id="evMax" type="number" inputmode="decimal" value="${(settings.event || {}).maxPrice ?? 150}">
-      <label style="display:flex;gap:12px;align-items:center;color:var(--fg)"><input id="evTaken" type="checkbox" style="width:28px;height:28px" ${(settings.event || {}).markTaken === false ? "" : "checked"}> Mark a flash design unavailable once someone picks it</label>
-      <label style="display:flex;gap:12px;align-items:center;color:var(--fg)"><input id="evHourly" type="checkbox" style="width:28px;height:28px" ${(settings.event || {}).hourlyApplies ? "checked" : ""}> Hourly pricing applies to event sessions</label>
       <hr><strong>Pricing</strong>
       ${Pricing.settingsHtml(settings)}
       <label for="autoLock">Auto-lock after (minutes of no activity)</label><input id="autoLock" type="number" inputmode="numeric" min="1" max="120" value="${settings.autoLockMin}">
@@ -454,8 +449,7 @@ screens.settings = {
     $("#saveSettings", root).onclick = async () => {
       const minAge = Math.max(0, Math.min(99, parseInt($("#minAge", root).value, 10) || 18));
       const autoLockMin = Math.max(1, Math.min(120, parseInt($("#autoLock", root).value, 10) || 5));
-      settings = { ...Pricing.readSettings(root, Mailer.readSettings(root, settings)), business: $("#biz", root).value.trim() || "Dirtpickle", artistName: $("#artist", root).value.trim() || DEFAULTS.artistName, minAge, autoLockMin,
-        event: { name: $("#evName", root).value.trim() || "Event", minPrice: parseFloat($("#evMin", root).value) || 0, maxPrice: parseFloat($("#evMax", root).value) || 0, markTaken: $("#evTaken", root).checked, hourlyApplies: $("#evHourly", root).checked } };
+      settings = { ...Pricing.readSettings(root, Mailer.readSettings(root, settings)), business: $("#biz", root).value.trim() || "Dirtpickle", artistName: $("#artist", root).value.trim() || DEFAULTS.artistName, minAge, autoLockMin };
       await DB.put(settings);
       await publishPublic();
       $("#setMsg", root).textContent = "Saved";

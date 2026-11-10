@@ -7,3 +7,4 @@ playwright-report/
 .pw-browsers/
 .npm-cache/
 scan-samples/
+test-flash/

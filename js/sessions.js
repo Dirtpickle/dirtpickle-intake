@@ -6,7 +6,7 @@ const Sessions = (() => {
   const localDay = iso => { const d = new Date(iso); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
   const isToday = iso => iso && localDay(iso) === localDay(new Date().toISOString());
   const money = n => (n || n === 0) && n !== "" ? "$" + Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 }) : "";
-  const ev = () => ({ name: "Event", minPrice: 80, maxPrice: 150, markTaken: true, ...(settings.event || {}) });
+  const ev = () => Events.pricing();
   const clientName = id => (DB.get(id) || {}).legalName || "Unknown";
   const sessions = () => DB.all("session");
   const flashList = () => DB.all("flash");
@@ -30,8 +30,9 @@ const Sessions = (() => {
   }
   async function createSession(clientId, flashId) {
     const f = flashId ? DB.get(flashId) : null;
+    const active = Events.getActive();
     const s = { type: "session", clientId, createdAt: new Date().toISOString(), status: "waiting", tattoo: {}, segments: [],
-      flashId: f ? f.id : null, flashName: f ? f.name : "", price: f ? (f.price ?? ev().minPrice) : "", deposit: "", paid: "", payMethod: "", notes: "" };
+      eventId: active ? active.id : null, flashId: f ? f.id : null, flashName: f ? f.name : "", price: f ? (f.price ?? ev().flashMin) : "", deposit: "", paid: "", payMethod: "", notes: "" };
     await DB.put(s); await claimFlash(flashId, true);
     return s;
   }
@@ -212,7 +213,7 @@ const Sessions = (() => {
         let n = 0, bad = 0;
         for (const f of files) {
           $("#fMsg", root).innerHTML = `<div class="banner warn">Importing ${n + bad + 1} of ${files.length}…</div>`;
-          try { await DB.put({ type: "flash", name: f.name.replace(/\.[^.]+$/, ""), sheet, price: ev().minPrice, minutes: 60, status: "available", notes: "", image: await resize(f) }); n++; }
+          try { await DB.put({ type: "flash", name: f.name.replace(/\.[^.]+$/, ""), sheet, price: ev().flashMin, minutes: 60, status: "available", notes: "", image: await resize(f) }); n++; }
           catch (_) { bad++; }
         }
         go("flash");
@@ -247,7 +248,7 @@ const Sessions = (() => {
   function historyHtml(clientId) {
     const list = sessions().filter(s => s.clientId === clientId).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     return list.map(s => `<div class="row" data-go="session" data-id="${esc(s.id)}"><div class="grow">${esc((s.tattoo && s.tattoo.description) || s.flashName || "Tattoo session")}
-      <div class="sub">${esc(new Date(s.createdAt).toLocaleDateString())} · ${LABEL[s.status]}${s.tattoo && s.tattoo.location ? " · " + esc(s.tattoo.location) : ""}${s.price !== "" && s.price != null ? " · " + money(s.price) : ""}${s.durationMs ? " · " + fmt(s.durationMs) : ""}</div></div><div class="mute">›</div></div>`).join("")
+      <div class="sub">${esc(new Date(s.createdAt).toLocaleDateString())} · ${LABEL[s.status]}${s.eventId && DB.get(s.eventId) ? " · " + esc(DB.get(s.eventId).name) : ""}${s.tattoo && s.tattoo.location ? " · " + esc(s.tattoo.location) : ""}${s.price !== "" && s.price != null ? " · " + money(s.price) : ""}${s.durationMs ? " · " + fmt(s.durationMs) : ""}</div></div><div class="mute">›</div></div>`).join("")
       || '<span class="mute">No sessions yet.</span>';
   }
   return { historyHtml, createSession, claim: id => claimFlash(id, true) };
