@@ -150,11 +150,13 @@ const Sessions = (() => {
           <label style="display:flex;gap:10px;align-items:center;color:var(--fg);margin-top:14px"><input type="checkbox" id="s_ack" style="width:26px;height:26px" ${(s.record || {}).artistAck ? "checked" : ""}> Artist acknowledgment: I reviewed the client information, verified the client's age, addressed safety concerns, obtained consent, and provided or arranged aftercare instructions.</label></div>
         <label for="s_notes">Artist notes</label><textarea id="s_notes" rows="3">${esc(s.notes)}</textarea>
         <div class="actions"><button class="primary" id="sSave">Save</button><span id="sMsg" class="mute" style="align-self:center"></span></div>
-        ${AftercareUI.sessionSection(s)} `;
+        ${AftercareUI.sessionSection(s)}
+        ${PhotosUI.sessionSection(s)} `;
     },
     bind(root, { id }) {
       clearInterval(tick);
       const s0 = DB.get(id); if (!s0) return;
+      PhotosUI.bindSession(root, id);
       tick = setInterval(() => { const el = $("#timer"); if (!el || cur.name !== "session") { clearInterval(tick); return; } el.textContent = fmt(elapsed(DB.get(id))); }, 1000);
       const v = k => $("#s_" + k, root).value.trim();
       const saveFields = async () => save(DB.get(id), { tattoo: { description: v("description"), location: v("location"), size: v("size") },

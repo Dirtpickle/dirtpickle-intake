@@ -348,7 +348,7 @@ screens.clientForm = {
 };
 
 /* ---------- Deleting (explicit, confirmed; also removes the client's signed paperwork) ---------- */
-const CLIENT_TYPES = ["session", "consent", "countersign", "aftercare"];
+const CLIENT_TYPES = ["session", "consent", "countersign", "aftercare", "photo"];
 function clientFootprint(id) {
   const rows = [];
   for (const t of CLIENT_TYPES) for (const r of DB.all(t)) if (r.clientId === id) rows.push(r);
@@ -389,6 +389,7 @@ screens.profile = {
         <button data-go="flashPick" data-id="${esc(c.id)}">Add to today's queue</button>
         <button id="printPaper">Print contract (wet ink)</button></div></div>
       ${IdVerifyUI.profileCard(c, true)}
+      ${PhotosUI.profileStrip(c.id)}
       ${(c.idPhotos || []).length ? `<div class="card"><strong>ID photo (front)</strong><div class="sub mute">${esc(fmtDate(c.idPhotos[c.idPhotos.length - 1].at))}</div><img src="${c.idPhotos[c.idPhotos.length - 1].image}" alt="" style="max-width:420px;width:100%;border-radius:10px;margin-top:8px"></div>` : ""}
       <div class="card"><strong>Consent paperwork</strong>
         <div class="actions" style="margin-top:10px"><button class="primary" id="startPaper">Start paperwork (hand iPad to client)</button></div>
@@ -429,7 +430,7 @@ screens.profile = {
     $("#printPaper", root).onclick = () => Consent.printPaper(id);
     $("#delClient", root).onclick = async () => {
       const n = clientFootprint(id);
-      const msg = `Permanently delete ${DB.get(id).legalName}, ${n.filter(r => r.type === "session").length} session(s) and ${n.filter(r => r.type !== "session").length} signed document(s)? This cannot be undone.`;
+      const msg = `Permanently delete ${DB.get(id).legalName}, ${n.filter(r => r.type === "session").length} session(s), ${n.filter(r => r.type === "photo").length} photo(s) and ${n.filter(r => !["session", "photo"].includes(r.type)).length} signed document(s)? This cannot be undone.`;
       if (!confirm(msg)) return;
       await deleteClient(id); go("clients");
     };
