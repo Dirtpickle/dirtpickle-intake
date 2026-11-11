@@ -61,6 +61,24 @@ const Intake = (() => {
   }
   const dkeys = ["legalName", "preferredName", "dob", "phone", "email", "address", "emergencyName", "emergencyPhone"];
   const fld = (k, label, K, a = "") => `<label for="i_${k}">${label}</label><input id="i_${k}" value="${esc(K.client[k] || "")}" ${a}>`;
+  const phoneFld = (k, label, K) => `${fld(k, label, K, 'type="tel" inputmode="tel"')}<div class="sub" data-phone-error="${k}"></div>`;
+  const wirePhoneFields = root => {
+    ["phone", "emergencyPhone"].forEach(k => {
+      const input = $("#i_" + k, root);
+      input.oninput = () => { input.value = Phone.format(input.value); };
+    });
+  };
+  const validatePhoneFields = root => {
+    const messages = [];
+    ["phone", "emergencyPhone"].forEach(k => {
+      const value = $("#i_" + k, root).value.trim();
+      const error = root.querySelector(`[data-phone-error="${k}"]`);
+      const invalid = value && !Phone.isValid(value);
+      if (error) error.textContent = invalid ? "Enter a 10-digit phone number." : "";
+      if (invalid) messages.push(`${k === "phone" ? "Phone" : "Emergency contact phone"} must have 10 digits.`);
+    });
+    return messages;
+  };
   screens.iInfo = {
     html() {
       const K = Consent.K();
@@ -76,12 +94,13 @@ const Intake = (() => {
         <div class="cols"><div>${fld("legalName", "Full legal name *", K, 'autocapitalize="words"')}${fld("preferredName", "Preferred name", K, 'autocapitalize="words"')}
           <label for="i_dob">Date of birth *</label><input id="i_dob" type="date" value="${esc(K.client.dob || "")}">
           ${age !== null ? `<div class="banner ${under ? "bad" : "ok"}">${under ? `You must be at least ${settings.minAge} to get a tattoo here. Please see the artist.` : `Age ${age}`}</div>` : ""}</div>
-          <div>${fld("phone", "Phone", K, 'type="tel" inputmode="tel"')}${fld("email", "Email", K, 'type="email" inputmode="email" autocapitalize="off"')}<label for="i_address">Address</label><input id="i_address" value="${esc(K.client.address || "")}" autocapitalize="words">${addressSuggestion(K)}</div>
-          <div>${fld("emergencyName", "Emergency contact name", K)}${fld("emergencyPhone", "Emergency contact phone", K, 'type="tel" inputmode="tel"')}</div></div>
+          <div>${phoneFld("phone", "Phone", K)}${fld("email", "Email", K, 'type="email" inputmode="email" autocapitalize="off"')}<label for="i_address">Address</label><input id="i_address" value="${esc(K.client.address || "")}" autocapitalize="words">${addressSuggestion(K)}</div>
+          <div>${fld("emergencyName", "Emergency contact name", K)}${phoneFld("emergencyPhone", "Emergency contact phone", K)}</div></div>
         <div id="iErr"></div><div class="actions"><button class="ghost" data-go="kPrivacy">‹ Back</button><button class="primary" id="iNext" ${under ? "disabled" : ""}>Continue</button></div>`;
     },
     bind(root) {
       const K = Consent.K();
+      wirePhoneFields(root);
       const collect = () => { for (const k of dkeys) K.client[k] = $("#i_" + k, root).value.trim(); };
       const useAddress = $("#useScanAddress", root);
       if (useAddress) useAddress.onclick = () => { $("#i_address", root).value = K.scannedAddress; collect(); go("iInfo"); };
@@ -105,6 +124,7 @@ const Intake = (() => {
         if (age === null || age > 125) m.push("Please enter a valid date of birth.");
         else if (age < settings.minAge) m.push(`You must be at least ${settings.minAge}.`);
         if (!c.phone && !c.email) m.push("Please give a phone number or email.");
+        m.push(...validatePhoneFields(root));
         if (!K.frontPhoto) m.push("Please take a photo of the front of your license.");
         if (c.email && !/^\S+@\S+\.\S+$/.test(c.email)) m.push("That email address looks wrong.");
         if (m.length) { $("#iErr", root).innerHTML = `<div class="banner bad">${m.map(esc).join("<br>")}</div>`; return; }

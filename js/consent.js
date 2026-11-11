@@ -304,6 +304,24 @@ const Consent = (() => {
     K = { mode: "intake", client: {}, scan: null, scannedAddress: "", frontPhoto: null, flashId: null, flashName: "", returning: !!returning, tpl: P.template, relayConfigured: !!P.relayConfigured, answers: {}, contact: {}, privacyAt: null };
     return {};
   }
+  function wirePhoneFields(root, prefix) {
+    ["phone", "emergencyPhone"].forEach(k => {
+      const input = $(`#${prefix}_${k}`, root);
+      input.oninput = () => { input.value = Phone.format(input.value); };
+    });
+  }
+  function validatePhoneFields(root, prefix) {
+    const messages = [];
+    ["phone", "emergencyPhone"].forEach(k => {
+      const value = $(`#${prefix}_${k}`, root).value.trim();
+      const error = root.querySelector(`[data-phone-error="${prefix}_${k}"]`);
+      const invalid = value && !Phone.isValid(value);
+      if (error) error.textContent = invalid ? "Enter a 10-digit phone number." : "";
+      if (invalid) messages.push(`${k === "phone" ? "Phone" : "Emergency contact phone"} must have 10 digits.`);
+    });
+    return messages;
+  }
+  const phoneInput = (prefix, key, label, value) => `<label for="${prefix}_${key}">${label}</label><input id="${prefix}_${key}" value="${esc(value)}" type="tel" inputmode="tel"><div class="sub" data-phone-error="${prefix}_${key}"></div>`;
   screens.kPrivacy = {
     html: () => `${kbar("Before you start")}
       <div class="card agree" style="max-height:none;font-size:22px"><p>${esc(privacyText())}</p></div>
@@ -323,12 +341,18 @@ const Consent = (() => {
       return `${kbar("Welcome. Please check your information.")}
         <div class="card"><dl class="kv"><dt>Name</dt><dd>${esc(c.legalName)}</dd><dt>Date of birth</dt><dd>${esc(c.dob)}</dd></dl>
         <div class="mute" style="font-size:15px">If your name or birth date is wrong, please tell the artist.</div></div>
-        <div class="cols"><div>${f("phone", "Phone", 'type="tel" inputmode="tel"')}${f("email", "Email", 'type="email" inputmode="email" autocapitalize="off"')}</div>
-        <div>${f("address", "Address")}</div><div>${f("emergencyName", "Emergency contact name")}${f("emergencyPhone", "Emergency contact phone", 'type="tel" inputmode="tel"')}</div></div>
-        <div class="actions"><button class="primary" id="kNext">Continue</button></div>`;
+        <div class="cols"><div>${phoneInput("k", "phone", "Phone", K.contact.phone)}${f("email", "Email", 'type="email" inputmode="email" autocapitalize="off"')}</div>
+        <div>${f("address", "Address")}</div><div>${f("emergencyName", "Emergency contact name")}${phoneInput("k", "emergencyPhone", "Emergency contact phone", K.contact.emergencyPhone)}</div></div>
+        <div id="kErr"></div><div class="actions"><button class="primary" id="kNext">Continue</button></div>`;
     },
     bind(root) {
-      $("#kNext", root).onclick = () => { for (const k of Object.keys(K.contact)) K.contact[k] = $("#k_" + k, root).value.trim(); go("kQuestions"); };
+      wirePhoneFields(root, "k");
+      $("#kNext", root).onclick = () => {
+        for (const k of Object.keys(K.contact)) K.contact[k] = $("#k_" + k, root).value.trim();
+        const errors = validatePhoneFields(root, "k");
+        if (errors.length) { $("#kErr", root).innerHTML = `<div class="banner bad">${errors.map(esc).join("<br>")}</div>`; return; }
+        go("kQuestions");
+      };
     }
   };
 
@@ -356,6 +380,7 @@ const Consent = (() => {
       ${K.tpl.sections.map((s, si) => `<div class="card sec" data-si="${si}"><strong>${esc(s.heading)}</strong>
         ${si === 0 ? `<div class="secbody"><p><b>Tattoo artist:</b> ${esc(settings.artistName)}</p></div>` : ""}
         ${s.body && s.body.length ? `<div class="secbody">${bodyHtml(s.body)}</div>` : ""}
+        ${si === 4 ? `<button type="button" class="small ghost" data-all-no="${si}" style="margin-bottom:8px">Answer No to all</button>` : ""}
         ${s.questions.map(qHtml).join("")}
         ${s.questions.filter(q => q.type === "check").length > 1 ? `<button class="small ghost" data-all="${si}" style="margin-top:8px">Tick all in this section</button>` : ""}
         ${s.initials ? `<div class="qrow"><div class="ql">Draw your initials *</div><canvas data-initials="${si}" width="120" height="60" style="width:120px;height:60px;border:1px solid #999;background:#fff;touch-action:none"></canvas><button type="button" class="small ghost" data-initials-clear="${si}">Clear</button></div>` : ""}</div>`).join("")}
@@ -378,6 +403,17 @@ const Consent = (() => {
         }
         const all = e.target.closest("[data-all]");
         if (all) root.querySelectorAll(`.sec[data-si="${all.dataset.all}"] input[type=checkbox]`).forEach(c => { c.checked = true; K.answers[c.dataset.q] = { v: true }; });
+        const allNo = e.target.closest("[data-all-no]");
+        if (allNo) {
+          const section = K.tpl.sections[+allNo.dataset.allNo];
+          section.questions.filter(q => q.type === "yesno").forEach(q => {
+            K.answers[q.id] = { ...(K.answers[q.id] || {}), v: "no" };
+            const group = root.querySelector(`[data-q="${q.id}"]`);
+            if (group) group.querySelectorAll("button").forEach(button => button.classList.toggle("primary", button.dataset.v === "no"));
+            const detail = root.querySelector(`[data-d="${q.id}"]`);
+            if (detail) detail.style.display = "none";
+          });
+        }
       });
       root.addEventListener("change", e => { const q = e.target.dataset.q; if (q && e.target.type === "checkbox") K.answers[q] = { v: e.target.checked }; });
       root.querySelectorAll("[data-initials]").forEach(canvas => {

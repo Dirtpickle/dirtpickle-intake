@@ -94,7 +94,23 @@ test("requires the single final acknowledgment", async ({ page }) => {
 test("legacy typed initials render and their PDF hash verifies", async ({ page }) => {
   await setup(page);
   const result = await page.evaluate(async () => {
-    const oldTemplate = { ...CONTRACT, id: "tpl-default-v1", source: "az-dp-2026-draft", version: 1, docVersion: "AZ-DP-2026-DRAFT" };
+    const oldTemplate = {
+      ...CONTRACT,
+      id: "tpl-default-v2",
+      source: "az-dp-2026-draft-2",
+      version: 1,
+      docVersion: "AZ-DP-2026-DRAFT-2",
+      sections: CONTRACT.sections.map((section, si) => si === 12 ? {
+        ...section,
+        heading: "13. Photography and publicity authorization",
+        initials: true,
+        body: ["Legacy photography wording."],
+        questions: [
+          { id: "ph1", type: "choice", required: true, label: "Legacy promotion choice", options: ["YES", "NO"] },
+          { id: "ph2", type: "choice", required: true, label: "Legacy identity choice", options: ["YES", "NO"] }
+        ]
+      } : section)
+    };
     await DB.put(oldTemplate);
     await Consent.init();
     const active = Consent.activeTemplate();
@@ -108,6 +124,8 @@ test("legacy typed initials render and their PDF hash verifies", async ({ page }
       if (section.initials) answers["init:" + si] = { v: "AE" };
       section.questions.forEach(question => { if (question.type === "check") answers[question.id] = { v: true }; });
     });
+    answers.ph1 = { v: "YES" };
+    answers.ph2 = { v: "NO" };
     const bytes = await Consent.buildPdf({ business: "Dirtpickle", minAge: 18,
       client: { id: "legacy-client", legalName: "Legacy Client", dob: "1990-01-01" },
       session: { id: "legacy-session", createdAt: new Date().toISOString(), flashName: "" },
@@ -117,7 +135,7 @@ test("legacy typed initials render and their PDF hash verifies", async ({ page }
       .map(byte => byte.toString(16).padStart(2, "0")).join("");
     return { activeSource: active.source, bytes: bytes.length, hash };
   });
-  expect(result.activeSource).toBe("az-dp-2026-draft-2");
+  expect(result.activeSource).toBe("az-dp-2026-draft-3");
   expect(result.bytes).toBeGreaterThan(0);
   expect(result.hash).toMatch(/^[0-9a-f]{64}$/);
 });
