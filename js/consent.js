@@ -157,107 +157,21 @@ const Consent = (() => {
     return pdf.save();
   }
 
-  /* ---------- printable (wet-ink) contract: same wording, blank or pre-filled, with artist sections ---------- */
-  async function buildPaperPdf(d) {
-    const { PDFDocument, StandardFonts, rgb } = PDFLib;
-    const pdf = await PDFDocument.create();
-    const font = await pdf.embedFont(StandardFonts.Helvetica), bold = await pdf.embedFont(StandardFonts.HelveticaBold);
-    const W = 612, H = 792, M = 54, CW = W - 2 * M, PINK = rgb(1, 0.176, 0.561), INK = rgb(0, 0, 0), GREY = rgb(0.4, 0.4, 0.4);
-    let page, y;
-    const newPage = () => { page = pdf.addPage([W, H]); y = H - M; };
-    const need = h => { if (y - h < M + 30) newPage(); };
-    const wrap = (txt, f, size, width) => {
-      const out = [];
-      for (const para of clean(txt).split("\n")) {
-        let ln = "";
-        for (const w of para.split(/\s+/)) { const t = ln ? ln + " " + w : w; if (f.widthOfTextAtSize(t, size) > width && ln) { out.push(ln); ln = w; } else ln = t; }
-        out.push(ln);
-      }
-      return out;
-    };
-    const text = (txt, { f = font, size = 10, color = INK, indent = 0, gap = 3 } = {}) => {
-      for (const l of wrap(txt, f, size, CW - indent)) { need(size + gap); page.drawText(l, { x: M + indent, y: y - size, size, font: f, color }); y -= size + gap; }
-    };
-    const heading = t => { need(40); y -= 10; text(t.toUpperCase(), { f: bold, size: 11, color: PINK }); page.drawLine({ start: { x: M, y: y + 1 }, end: { x: W - M, y: y + 1 }, thickness: 0.6, color: PINK }); y -= 6; };
-    const line = (label, value, short) => {
-      need(24); const lw = bold.widthOfTextAtSize(clean(label), 10), x0 = M + lw + 6;
-      page.drawText(clean(label), { x: M, y: y - 10, size: 10, font: bold });
-      page.drawLine({ start: { x: x0, y: y - 12 }, end: { x: short ? x0 + 90 : W - M, y: y - 12 }, thickness: 0.5, color: GREY });
-      if (value) page.drawText(clean(value), { x: x0 + 4, y: y - 9, size: 10, font });
-      y -= 22;
-    };
-    const box = (x, top) => page.drawRectangle({ x, y: top - 9, width: 9, height: 9, borderColor: INK, borderWidth: 0.8 });
-    const checkLine = (label, indent = 0) => {
-      const ls = wrap(label, font, 9.5, CW - indent - 16); need(ls.length * 12 + 4); box(M + indent, y);
-      ls.forEach((l, i) => page.drawText(l, { x: M + indent + 16, y: y - 9 - i * 12, size: 9.5, font })); y -= ls.length * 12 + 4;
-    };
-    const yesNo = label => {
-      const ls = wrap(label, font, 9.5, CW - 120); need(ls.length * 12 + 6);
-      ls.forEach((l, i) => page.drawText(l, { x: M, y: y - 9 - i * 12, size: 9.5, font }));
-      const bx = W - M - 100; box(bx, y); page.drawText("Yes", { x: bx + 13, y: y - 9, size: 9.5, font }); box(bx + 52, y); page.drawText("No", { x: bx + 65, y: y - 9, size: 9.5, font });
-      y -= ls.length * 12 + 6;
-    };
-
-    const sigImg = d.artistSig ? await pdf.embedPng(d.artistSig) : null, initImg = d.artistInit ? await pdf.embedPng(d.artistInit) : null;
-    const stamp_ = (img, label, maxW, maxH, short) => {
-      if (!img) return;
-      const lw = bold.widthOfTextAtSize(clean(label), 10), x0 = M + lw + 10, k = Math.min(maxW / img.width, maxH / img.height);
-      page.drawImage(img, { x: x0, y: y + 11, width: img.width * k, height: img.height * k });
-    };
-    newPage();
-    page.drawRectangle({ x: 0, y: H - 14, width: W, height: 14, color: INK });
-    page.drawRectangle({ x: 0, y: H - 18, width: W, height: 4, color: PINK });
-    y -= 12;
-    text(d.business.toUpperCase(), { f: bold, size: 22, gap: 6 });
-    text(d.tpl.title, { f: bold, size: 14, gap: 4 });
-    if (d.tpl.intro) text(d.tpl.intro, { size: 9.5, color: GREY, gap: 4 });
-    heading("1. Client information");
-    const c = d.client || {};
-    line("Full legal name:", c.legalName); line("Date of birth:", c.dob); line("Phone number:", c.phone); line("Email address:", c.email); line("Address:", c.address);
-    line("City / State / ZIP:", ""); line("Government ID type:", ""); line("Issuing state:", ""); line("ID expiration date:", "");
-    yesNo("Age verified by artist");
-    line("Tattoo artist:", d.artist || d.business); line("Procedure location:", ""); line("Date of procedure:", "");
-
-    d.tpl.sections.forEach((sec, si) => {
-      if (si === 0) return; // client information is drawn above
-      heading(sec.heading);
-      for (const l of (sec.body || [])) {
-        if (l.startsWith("- ")) text("• " + l.slice(2), { size: 9.5, indent: 10, gap: 2 });
-        else if (l.startsWith("# ")) text(l.slice(2), { f: bold, size: 10, gap: 2 });
-        else text(l, { size: 9.5, gap: 3 });
-      }
-      for (const q of sec.questions) {
-        if (q.type === "check") checkLine(q.label, 4);
-        else if (q.type === "yesno") yesNo(q.label);
-        else if (q.type === "choice") { text(q.label, { f: bold, size: 9.5, gap: 2 }); q.options.forEach(o => checkLine(o, 10)); }
-        else line(q.label + ":", "");
-      }
-      if (sec.initials) line("Client initials:", "", true);
-    });
-
-    heading("Client signature");
-    text(d.tpl.agreement.join(" "), { f: bold, size: 9.5, gap: 6 });
-    line("Signature:", ""); line("Printed name:", c.legalName); line("Date:", ""); line("Time:", "");
-    heading("Tattoo artist acknowledgment");
-    text("I acknowledge that I reviewed the required client information, verified the client's age, addressed relevant safety concerns, obtained consent, and provided or arranged for appropriate aftercare instructions.", { size: 9.5, gap: 6 });
-    line("Artist signature:", ""); stamp_(sigImg, "Artist signature:", 170, 34); line("Date:", "");
-    heading("Artist use only - procedure record");
-    for (const l of ["Stencil / design reference:", "Tattoo location:", "Procedure start time:", "Procedure end time:", "Needle / cartridge type:", "Needle / cartridge lot:",
-      "Ink brand(s):", "Pigment / color(s):", "Ink lot / batch number(s):", "Ink expiration date(s):", "Barrier / dressing used:"]) line(l, "");
-    yesNo("Aftercare instructions provided"); yesNo("Final procedure photograph taken");
-    text("Additional notes / complications:", { f: bold, size: 10, gap: 4 }); line("", ""); line("", "");
-    line("Final payment collected: $", ""); line("Artist initials:", "", true); stamp_(initImg, "Artist initials:", 70, 30, true);
-
-    const pages = pdf.getPages();
-    pages.forEach((p, i) => p.drawText(clean(`${d.business} | ${d.tpl.docVersion ? d.tpl.docVersion + " | " : ""}Page ${i + 1} of ${pages.length}`), { x: M, y: 28, size: 8, font, color: GREY }));
-    pdf.setTitle(`${d.business} contract (print)`);
-    return pdf.save();
-  }
-  async function printPaper(clientId) {
+  /* ---------- printable (wet-ink) contract ---------- */
+  async function buildPaperPdf(d) { return ConsentPaper.buildPaperPdf(d); }
+  async function paperBytes(clientId) {
     const tpl = activeTemplate();
     const withSig = settings.printWithSignature !== false;
-    const bytes = await buildPaperPdf({ business: settings.business, artist: settings.artistName, tpl, client: clientId ? DB.get(clientId) : null,
+    const client = clientId ? DB.get(clientId) : null;
+    const consent = client ? DB.all("consent").filter(d => d.locked && d.signedAt && (d.clientId === client.id || (d.clientSnapshot && d.clientSnapshot.id === client.id)))
+      .sort((a, b) => new Date(b.signedAt) - new Date(a.signedAt))[0] : null;
+    const source = consent && consent.clientSnapshot ? consent.clientSnapshot : client;
+    return buildPaperPdf({ business: settings.business, artist: settings.artistName, tpl: consent ? consent.template : tpl, client: source,
+      prefill: consent ? { answers: consent.answers || {}, signedAtText: stamp(consent.signedAt) } : null,
       artistSig: withSig ? settings.artistSignature : null, artistInit: withSig ? settings.artistInitials : null });
+  }
+  async function printPaper(clientId) {
+    const bytes = await paperBytes(clientId);
     window.open(URL.createObjectURL(new Blob([bytes], { type: "application/pdf" })), "_blank");
   }
 
@@ -341,7 +255,7 @@ const Consent = (() => {
       return `${kbar("Welcome. Please check your information.")}
         <div class="card"><dl class="kv"><dt>Name</dt><dd>${esc(c.legalName)}</dd><dt>Date of birth</dt><dd>${esc(c.dob)}</dd></dl>
         <div class="mute" style="font-size:15px">If your name or birth date is wrong, please tell the artist.</div></div>
-        <div class="cols"><div>${phoneInput("k", "phone", "Phone", K.contact.phone)}${f("email", "Email", 'type="email" inputmode="email" autocapitalize="off"')}</div>
+        <div class="cols"><div>${phoneInput("k", "phone", "Phone", K.contact.phone)}${f("email", "Email (optional - for a copy of your signed contract)", 'type="email" inputmode="email" autocapitalize="off"')}</div>
         <div>${f("address", "Address")}</div><div>${f("emergencyName", "Emergency contact name")}${phoneInput("k", "emergencyPhone", "Emergency contact phone", K.contact.emergencyPhone)}</div></div>
         <div id="kErr"></div><div class="actions"><button class="primary" id="kNext">Continue</button></div>`;
     },
@@ -607,5 +521,5 @@ const Consent = (() => {
   };
 
   document.addEventListener("click", e => { if (e.target.closest("#kStaff")) { K = null; DB.isUnlocked() ? lock() : showPin("unlock"); } });
-  return { sigPad, countersign, printPaper, K: () => K, startIntake, buildPdf, privacyText, init, start, docs, fileName, blobUrl, stamp, activeTemplate, defaultPrivacy: DEFAULT_PRIVACY };
+  return { sigPad, countersign, printPaper, paperBytes, buildPaperPdf, K: () => K, startIntake, buildPdf, privacyText, init, start, docs, fileName, blobUrl, stamp, activeTemplate, defaultPrivacy: DEFAULT_PRIVACY };
 })();

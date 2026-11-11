@@ -94,7 +94,7 @@ const Intake = (() => {
         <div class="cols"><div>${fld("legalName", "Full legal name *", K, 'autocapitalize="words"')}${fld("preferredName", "Preferred name", K, 'autocapitalize="words"')}
           <label for="i_dob">Date of birth *</label><input id="i_dob" type="date" value="${esc(K.client.dob || "")}">
           ${age !== null ? `<div class="banner ${under ? "bad" : "ok"}">${under ? `You must be at least ${settings.minAge} to get a tattoo here. Please see the artist.` : `Age ${age}`}</div>` : ""}</div>
-          <div>${phoneFld("phone", "Phone", K)}${fld("email", "Email", K, 'type="email" inputmode="email" autocapitalize="off"')}<label for="i_address">Address</label><input id="i_address" value="${esc(K.client.address || "")}" autocapitalize="words">${addressSuggestion(K)}</div>
+          <div>${phoneFld("phone", "Phone", K)}${fld("email", "Email (optional - for a copy of your signed contract)", K, 'type="email" inputmode="email" autocapitalize="off"')}<label for="i_address">Address</label><input id="i_address" value="${esc(K.client.address || "")}" autocapitalize="words">${addressSuggestion(K)}</div>
           <div>${fld("emergencyName", "Emergency contact name", K)}${phoneFld("emergencyPhone", "Emergency contact phone", K)}</div></div>
         <div id="iErr"></div><div class="actions"><button class="ghost" data-go="kPrivacy">‹ Back</button><button class="primary" id="iNext" ${under ? "disabled" : ""}>Continue</button></div>`;
     },
