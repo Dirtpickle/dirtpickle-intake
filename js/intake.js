@@ -38,23 +38,6 @@ const Intake = (() => {
   };
 
   /* ----- your information ----- */
-  function shrinkCanvas(file, max = 1200) {
-    return new Promise((res, rej) => {
-      const img = new Image(), url = URL.createObjectURL(file);
-      img.onload = () => {
-        const k = Math.min(1, max / Math.max(img.width, img.height)), c = document.createElement("canvas");
-        c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
-        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url); res(c);
-      };
-      img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("bad image")); };
-      img.src = url;
-    });
-  }
-  function idPhotoNotice(K) {
-    if (!K.idPhotoCheck || !K.idPhotoCheck.warnings.length) return "";
-    const warnings = K.idPhotoCheck.warnings.map(esc).join("; ");
-    return `<div class="banner warn" style="margin-top:10px">This doesn't look like a license photo yet: ${warnings}. You can retake it, or continue.</div>`;
-  }
   function addressSuggestion(K) {
     if (!K.scannedAddress || K.scannedAddress === K.client.address) return "";
     return `<button type="button" class="small ghost" id="useScanAddress">Use address on license</button>`;
@@ -88,9 +71,7 @@ const Intake = (() => {
         <div class="card"><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><button class="primary" id="iScanBtn">Scan driver's license</button>
           <span class="mute" style="font-size:16px">Or type your details below.</span></div>
           ${K.scan ? `<div class="banner ok" style="margin:12px 0 0">✓ ID barcode read. Your details were filled in. Please check them. The artist will confirm your ID in person.</div>` : ""}</div>
-        <div class="card"><strong>Photo of the FRONT of your license *</strong>
-          <div class="actions" style="margin-top:10px"><label class="btn" style="display:inline-flex;align-items:center">${K.frontPhoto ? "Retake photo" : "Take photo"}<input id="iFront" type="file" accept="image/*" capture="environment" hidden></label></div>
-          ${K.frontPhoto ? `<img src="${K.frontPhoto}" alt="" style="max-width:320px;width:100%;border-radius:10px;margin-top:10px">${idPhotoNotice(K)}` : ""}</div>
+        ${IdPhoto.block({ photo: K.frontPhoto, check: K.idPhotoCheck, inputId: "iFront", title: "Photo of the FRONT of your license *" })}
         <div class="cols"><div>${fld("legalName", "Full legal name *", K, 'autocapitalize="words"')}${fld("preferredName", "Preferred name", K, 'autocapitalize="words"')}
           <label for="i_dob">Date of birth *</label><input id="i_dob" type="date" value="${esc(K.client.dob || "")}">
           ${age !== null ? `<div class="banner ${under ? "bad" : "ok"}">${under ? `You must be at least ${settings.minAge} to get a tattoo here. Please see the artist.` : `Age ${age}`}</div>` : ""}</div>
@@ -106,17 +87,11 @@ const Intake = (() => {
       if (useAddress) useAddress.onclick = () => { $("#i_address", root).value = K.scannedAddress; collect(); go("iInfo"); };
       $("#i_dob", root).onchange = () => { collect(); go("iInfo"); };
       $("#iScanBtn", root).onclick = () => { collect(); go("iScan"); };
-      $("#iFront", root).onchange = async e => {
-        const f = e.target.files[0]; if (!f) return; collect();
-        try {
-          const canvas = await shrinkCanvas(f);
-          const choice = await IdCropUI.open(canvas, IdCrop.autoCrop(canvas));
-          if (choice.action === "retake") { go("iInfo"); return; }
-          K.frontPhoto = choice.canvas.toDataURL("image/jpeg", 0.8);
-          K.idPhotoCheck = IdCheck.analyze(choice.canvas);
-          go("iInfo");
-        } catch (err) { $("#iErr", root).innerHTML = `<div class="banner bad">Could not read that photo. Please try again.</div>`; }
-      };
+      IdPhoto.attach(root, {
+        inputId: "iFront",
+        onPhoto: result => { K.frontPhoto = result.image; K.idPhotoCheck = result.check; go("iInfo"); },
+        onError: () => { $("#iErr", root).innerHTML = `<div class="banner bad">Could not read that photo. Please try again.</div>`; }
+      });
       $("#iNext", root).onclick = () => {
         collect();
         const c = K.client, age = ageOn(c.dob), m = [];

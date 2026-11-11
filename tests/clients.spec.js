@@ -9,6 +9,9 @@ test("creates a client, merges a returning check-in, and warns on duplicates", a
   await page.locator("#legalName").fill("Alex Example");
   await page.locator("#dob").fill("1990-01-01");
   await page.locator("#phone").fill("9285550100");
+  await page.locator("#skipIdPhoto").click();
+  await page.locator("#photoOverrideReason").fill("Verified in person for duplicate test");
+  await page.locator("#confirmPhotoOverride").click();
   await page.locator("#saveClient").click();
   await expect(page.locator("#dupBox")).toContainText("Possible existing client");
   await page.locator("#saveAnyway").click();
@@ -51,4 +54,47 @@ test("loads an old-format client without license or ID history fields", async ({
   await page.locator('[data-go="profile"][data-id="old-format"]').click();
   await expect(page.getByRole("heading", { name: "Old Format", exact: true })).toBeVisible();
   await expect(page.getByText("Status: not verified")).toBeVisible();
+});
+
+test("blocks a new PRO client without a photo or override", async ({ page }) => {
+  await setup(page);
+  await page.locator('[data-go="clientForm"]').click();
+  await page.locator("#legalName").fill("Photo Required");
+  await page.locator("#dob").fill("1990-01-01");
+  await page.locator("#saveClient").click();
+  await expect(page.locator("#dupBox")).toContainText("Take a photo of the front");
+});
+
+async function fillGeneratedPhoto(page) {
+  await page.locator("#idFront").setInputFiles("test/sample-license-barcode.png");
+  await page.getByRole("button", { name: "Use full photo" }).click();
+  await expect(page.locator("#idPhotoPreview img")).toBeVisible();
+}
+
+test("saves a generated license photo and does not ask again", async ({ page }) => {
+  await setup(page);
+  await page.locator('[data-go="clientForm"]').click();
+  await page.locator("#legalName").fill("Photo Client");
+  await page.locator("#dob").fill("1990-01-01");
+  await fillGeneratedPhoto(page);
+  await page.locator("#saveClient").click();
+  await page.getByRole("button", { name: "Review / edit info" }).click();
+  await expect(page.getByText(/ID photo on file/)).toBeVisible();
+  await expect(page.locator("#skipIdPhoto")).toHaveCount(0);
+  const photos = await page.evaluate(() => DB.all("client").find(c => c.legalName === "Photo Client").idPhotos);
+  expect(photos).toHaveLength(1);
+});
+
+test("saves a PRO client with an artist override reason", async ({ page }) => {
+  await setup(page);
+  await page.locator('[data-go="clientForm"]').click();
+  await page.locator("#legalName").fill("Override Client");
+  await page.locator("#dob").fill("1990-01-01");
+  await page.locator("#skipIdPhoto").click();
+  await page.locator("#photoOverrideReason").fill("Client presented ID in person");
+  await page.locator("#confirmPhotoOverride").click();
+  await page.locator("#saveClient").click();
+  await expect(page.getByRole("heading", { name: "Override Client", exact: true })).toBeVisible();
+  const check = await page.evaluate(() => DB.all("client").find(c => c.legalName === "Override Client").idChecks.slice(-1)[0]);
+  expect(check).toMatchObject({ type: "artist-override", reason: "Client presented ID in person" });
 });

@@ -29,6 +29,9 @@ async function newClient(page, name = "Alex Example", dob = "1990-01-01") {
   await page.locator("#dob").fill(dob);
   await page.locator("#phone").fill("9285550100");
   await page.locator("#email").fill("alex@example.com");
+  await page.locator("#skipIdPhoto").click();
+  await page.locator("#photoOverrideReason").fill("Routine test artist override");
+  await page.locator("#confirmPhotoOverride").click();
   await page.locator("#saveClient").click();
   await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
 }

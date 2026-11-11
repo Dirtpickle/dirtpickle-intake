@@ -258,12 +258,18 @@ screens.clientForm = {
     const c = { ...existing, ...((pendingScan && pendingScan.fields) || {}) };
     const addressSuggestion = pendingScan && pendingScan.scannedAddress && pendingScan.scannedAddress !== (c.address || "")
       ? `<button type="button" class="small ghost" id="useScanAddress">Use address on license</button>` : "";
+    const latestPhoto = (c.idPhotos || []).slice(-1)[0];
+    const photoTitle = latestPhoto ? `ID photo on file (${fmtDate(latestPhoto.at)})` : "Photo of the front of your license *";
     const f = (k, label, attrs = "") => `<label for="${k}">${label}</label><input id="${k}" value="${esc(c[k])}" ${attrs}>`;
     return `${bar(id ? "Review client info" : "New client", { back: id ? "profile" : "home", backId: id })}
       <div class="card"><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
         <button class="primary" data-go="scan"${id ? ` data-id="${esc(id)}"` : ""}>Scan driver's license</button>
         <span class="mute" style="font-size:16px">Or type the details in below.</span></div>
         ${pendingScan ? IdVerifyUI.matchBanner(pendingScan.scanned, pendingScan.typed || c) + idPanel(pendingScan) : ""}</div>
+      ${IdPhoto.block({ photo: latestPhoto && latestPhoto.image, check: null, inputId: "idFront", title: photoTitle })}
+      ${latestPhoto ? "" : `<div class="actions" style="margin-top:-8px"><a href="#" id="skipIdPhoto">Skip photo (artist override)</a></div>
+        <div id="photoOverrideBox" hidden><label for="photoOverrideReason">Reason for skipping the photo</label>
+          <input id="photoOverrideReason" autocomplete="off"><button class="small" id="confirmPhotoOverride" type="button">Use override</button></div>`}
       <div class="cols">
         <div>${f("legalName", "Full legal name *", 'autocomplete="off" autocapitalize="words"')}
           ${f("preferredName", "Preferred name", 'autocapitalize="words"')}
@@ -280,6 +286,10 @@ screens.clientForm = {
         <button class="ghost" data-go="${id ? "profile" : "home"}" ${id ? `data-id="${esc(id)}"` : ""}>Cancel</button></div>`;
   },
   bind(root, { id }) {
+    let newIdPhoto = null;
+    let overrideReason = "";
+    const existing = (id && DB.get(id)) || {};
+    const hasPhoto = (existing.idPhotos || []).length > 0;
     const v = k => $("#" + k, root).value.trim();
     const refreshMatch = () => {
       if (!pendingScan) return;
@@ -289,6 +299,25 @@ screens.clientForm = {
     ["legalName", "dob"].forEach(k => $("#" + k, root).addEventListener("input", refreshMatch));
     const useAddress = $("#useScanAddress", root);
     if (useAddress) useAddress.onclick = () => { $("#address", root).value = pendingScan.scannedAddress; };
+    IdPhoto.attach(root, {
+      inputId: "idFront",
+      onPhoto: result => { newIdPhoto = result; },
+      onError: () => { $("#dupBox", root).innerHTML = `<div class="banner bad">Could not read that photo. Please try again.</div>`; }
+    });
+    const skip = $("#skipIdPhoto", root);
+    if (skip) skip.onclick = event => {
+      event.preventDefault();
+      if (!IdVerifyUI.canOverrideId()) return;
+      $("#photoOverrideBox", root).hidden = false;
+      $("#photoOverrideReason", root).focus();
+    };
+    const confirmOverride = $("#confirmPhotoOverride", root);
+    if (confirmOverride) confirmOverride.onclick = () => {
+      const reason = $("#photoOverrideReason", root).value.trim();
+      if (!reason) { $("#dupBox", root).innerHTML = `<div class="banner bad">Enter a reason for the artist override.</div>`; return; }
+      overrideReason = reason;
+      $("#photoOverrideBox", root).innerHTML = `<div class="banner warn">Artist override recorded. Save to continue.</div>`;
+    };
     const ageLine = $("#ageLine", root), save = $("#saveClient", root);
     const refreshAge = () => {
       const a = ageOn($("#dob", root).value);
@@ -318,6 +347,9 @@ screens.clientForm = {
           authenticityChecked: false
         }];
       }
+      if (newIdPhoto) rec.idPhotos = [...(rec.idPhotos || []), { at: now, image: newIdPhoto.image }].slice(-3);
+      const override = IdVerifyUI.overrideEntry(overrideReason);
+      if (override) rec.idChecks = [...(rec.idChecks || []), override];
       await DB.put(rec);
       pendingScan = null;
       go("profile", { id: rec.id });
@@ -332,6 +364,7 @@ screens.clientForm = {
       else if (age < settings.minAge) msgs.push(`Client is under the minimum age of ${settings.minAge}.`);
       if (d.email && !/^\S+@\S+\.\S+$/.test(d.email)) msgs.push("Email address looks invalid.");
       if (pendingScan && !($("#visualOk", root) || {}).checked) msgs.push("Confirm that you compared the ID to the client.");
+      if (!hasPhoto && !newIdPhoto && !overrideReason) msgs.push("Take a photo of the front of the license, or use the artist override.");
       const box = $("#dupBox", root);
       if (msgs.length) { box.innerHTML = `<div class="banner bad">${msgs.map(esc).join("<br>")}</div>`; return; }
       const dup = findDuplicate(d, id);
@@ -416,10 +449,10 @@ screens.profile = {
       toggleLicense.textContent = shown ? "Show" : "Hide";
     };
     if (override) override.onclick = async () => {
-      if (!Perms.can("overrideId")) return;
       const reason = prompt("Why did you verify this ID in person?");
-      if (!reason || !reason.trim()) return;
-      const c = DB.get(id), entry = { type: "artist-override", at: new Date().toISOString(), reason: reason.trim(), by: settings.artistName };
+      const entry = IdVerifyUI.overrideEntry(reason);
+      if (!entry) return;
+      const c = DB.get(id);
       await DB.put({ ...c, idChecks: [...(c.idChecks || []), entry], updatedAt: new Date().toISOString() });
       go("profile", { id });
     };

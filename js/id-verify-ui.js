@@ -24,11 +24,18 @@ const IdVerifyUI = (() => {
   }
 
   function profileCard(client, canOverride) {
-    const allowed = canOverride && Perms.can("overrideId");
+    const allowed = canOverride && canOverrideId();
     return `<div class="card"><strong>ID verification</strong><div style="margin-top:8px">Status: <b>${escText(status(client))}</b></div>
       ${allowed ? `<div class="actions" style="margin-top:10px"><button id="artistOverride">Artist override: I verified this ID in person</button></div>` : ""}
       <div id="overrideMsg"></div></div>`;
   }
 
-  return { licenseField, matchBanner, profileCard, status };
+  function canOverrideId() { return Perms.can("overrideId"); }
+
+  function overrideEntry(reason) {
+    if (!canOverrideId() || !reason || !reason.trim()) return null;
+    return { type: "artist-override", at: new Date().toISOString(), reason: reason.trim(), by: settings.artistName };
+  }
+
+  return { licenseField, matchBanner, profileCard, status, canOverrideId, overrideEntry };
 })();
