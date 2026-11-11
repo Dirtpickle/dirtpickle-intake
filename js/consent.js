@@ -392,6 +392,7 @@ const Consent = (() => {
     const now = new Date().toISOString(), c = K.client, docId = crypto.randomUUID(), sessId = crypto.randomUUID();
     const ageAtSigning = ageOn(c.dob);
     const idCheck = K.scan ? { at: now, method: "pdf417-barcode", idState: K.scan.idState, idExpiry: K.scan.idExpiry, idExpired: K.scan.idExpired,
+      matched: K.scan.scanned ? IdMatch.compare(K.scan.scanned, c).matched : true,
       calculatedAge: ageAtSigning, minAge: settings.minAge, visuallyMatched: false, authenticityChecked: false } : null;
     const privacy = { text: privacyText(), at: K.privacyAt || now };
     const session = { id: sessId, createdAt: now, flashId: K.flashId, flashName: K.flashName };

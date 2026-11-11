@@ -33,6 +33,7 @@ const AAMVA = (() => {
       last = last || parts[0] || ""; first = first || parts[1] || ""; middle = middle || parts[2] || "";
     }
     const dob = parseDate(field(text, "DBB"));
+    const idNumber = field(text, "DAQ");
     const expiry = parseDate(field(text, "DBA"));
     const street = field(text, "DAG") || field(text, "DAG");
     const city = field(text, "DAI"), state = field(text, "DAJ");
@@ -44,8 +45,7 @@ const AAMVA = (() => {
     const today = new Date().toISOString().slice(0, 10);
     return {
       legalName, dob, address,
-      // Only these verification facts are kept. The license number and image are not stored.
-      idState: state.toUpperCase(), idExpiry: expiry, idExpired: expiry ? expiry < today : null
+      idNumber, idState: state.toUpperCase(), idExpiry: expiry, idExpired: expiry ? expiry < today : null
     };
   }
   return { parse, parseDate };

@@ -43,3 +43,12 @@ test("imports a returning check-in into the existing client", async ({ page }) =
   const count = await page.evaluate(() => DB.all("client").filter(c => c.legalName === "Returning Client").length);
   expect(count).toBe(1);
 });
+
+test("loads an old-format client without license or ID history fields", async ({ page }) => {
+  await setup(page);
+  await page.evaluate(async () => DB.put({ type: "client", id: "old-format", legalName: "Old Format", dob: "1990-01-01", visits: [] }));
+  await page.locator('[data-go="clients"]').click();
+  await page.locator('[data-go="profile"][data-id="old-format"]').click();
+  await expect(page.getByRole("heading", { name: "Old Format", exact: true })).toBeVisible();
+  await expect(page.getByText("Status: not verified")).toBeVisible();
+});

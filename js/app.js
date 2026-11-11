@@ -215,7 +215,7 @@ function idPanel(sc) {
     <label style="display:flex;gap:12px;align-items:center;color:var(--fg);font-size:18px">
       <input id="visualOk" type="checkbox" style="width:28px;height:28px"> I compared the ID photo to the client in person.</label>
     <div class="banner warn" style="margin:8px 0;font-weight:400;font-size:16px">This app reads what the barcode says.
-      It does not confirm the card is genuine. The license image and number are not saved.</div></div>`;
+      It does not confirm the card is genuine. The license image is not saved.</div></div>`;
 }
 screens.scan = {
   html: ({ id }) => `${bar("Scan driver's license", { back: "clientForm", backId: id })}
@@ -230,8 +230,9 @@ screens.scan = {
     const done = text => {
       const parsed = AAMVA.parse(text);
       if (!parsed) { msg("A barcode was read, but it is not a driver's license barcode. Try the back of the card."); return false; }
-      pendingScan = { fields: { legalName: parsed.legalName, dob: parsed.dob }, scannedAddress: parsed.address || "",
-        idState: parsed.idState, idExpiry: parsed.idExpiry, idExpired: parsed.idExpired };
+      pendingScan = { fields: { legalName: parsed.legalName, dob: parsed.dob, licenseNumber: parsed.idNumber }, scannedAddress: parsed.address || "",
+        idNumber: parsed.idNumber, idState: parsed.idState, idExpiry: parsed.idExpiry, idExpired: parsed.idExpired,
+        scanned: { legalName: parsed.legalName, dob: parsed.dob }, typed: id ? { legalName: DB.get(id).legalName, dob: DB.get(id).dob } : null };
       go("clientForm", id ? { id } : {});
       return true;
     };
@@ -253,7 +254,8 @@ screens.scan = {
 /* ---------- Client form (new / edit) ---------- */
 screens.clientForm = {
   html({ id }) {
-    const c = { ...((id && DB.get(id)) || {}), ...((pendingScan && pendingScan.fields) || {}) };
+    const existing = (id && DB.get(id)) || {};
+    const c = { ...existing, ...((pendingScan && pendingScan.fields) || {}) };
     const addressSuggestion = pendingScan && pendingScan.scannedAddress && pendingScan.scannedAddress !== (c.address || "")
       ? `<button type="button" class="small ghost" id="useScanAddress">Use address on license</button>` : "";
     const f = (k, label, attrs = "") => `<label for="${k}">${label}</label><input id="${k}" value="${esc(c[k])}" ${attrs}>`;
@@ -261,7 +263,7 @@ screens.clientForm = {
       <div class="card"><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
         <button class="primary" data-go="scan"${id ? ` data-id="${esc(id)}"` : ""}>Scan driver's license</button>
         <span class="mute" style="font-size:16px">Or type the details in below.</span></div>
-        ${pendingScan ? idPanel(pendingScan) : ""}</div>
+        ${pendingScan ? IdVerifyUI.matchBanner(pendingScan.scanned, pendingScan.typed || c) + idPanel(pendingScan) : ""}</div>
       <div class="cols">
         <div>${f("legalName", "Full legal name *", 'autocomplete="off" autocapitalize="words"')}
           ${f("preferredName", "Preferred name", 'autocapitalize="words"')}
@@ -270,7 +272,7 @@ screens.clientForm = {
         <div>${f("phone", "Phone number", 'type="tel" inputmode="tel"')}
           ${f("email", "Email address", 'type="email" inputmode="email" autocapitalize="off"')}
           <label for="address">Address</label><input id="address" value="${esc(c.address)}" autocapitalize="words">${addressSuggestion}</div>
-        <div>${f("emergencyName", "Emergency contact name")}
+        <div>${IdVerifyUI.licenseField(c)}${f("emergencyName", "Emergency contact name")}
           ${f("emergencyPhone", "Emergency contact phone", 'type="tel" inputmode="tel"')}</div>
       </div>
       <div id="dupBox"></div>
@@ -279,6 +281,12 @@ screens.clientForm = {
   },
   bind(root, { id }) {
     const v = k => $("#" + k, root).value.trim();
+    const refreshMatch = () => {
+      if (!pendingScan) return;
+      const banner = $("#idMatchBanner", root);
+      if (banner) banner.outerHTML = IdVerifyUI.matchBanner(pendingScan.scanned, { legalName: v("legalName"), dob: $("#dob", root).value });
+    };
+    ["legalName", "dob"].forEach(k => $("#" + k, root).addEventListener("input", refreshMatch));
     const useAddress = $("#useScanAddress", root);
     if (useAddress) useAddress.onclick = () => { $("#address", root).value = pendingScan.scannedAddress; };
     const ageLine = $("#ageLine", root), save = $("#saveClient", root);
@@ -295,18 +303,18 @@ screens.clientForm = {
     const gather = () => ({
       legalName: v("legalName"), preferredName: v("preferredName"), dob: $("#dob", root).value,
       phone: v("phone"), email: v("email"), address: v("address"),
-      emergencyName: v("emergencyName"), emergencyPhone: v("emergencyPhone")
+      licenseNumber: v("licenseNumber"), emergencyName: v("emergencyName"), emergencyPhone: v("emergencyPhone")
     });
     const doSave = async data => {
       const now = new Date().toISOString();
       const rec = id ? { ...DB.get(id), ...data, updatedAt: now }
         : { type: "client", ...data, notes: "", visits: [now], createdAt: now, updatedAt: now };
       if (pendingScan) {
-        // Verification record only. The license image and license number are never stored.
         const sc = pendingScan;
+        const match = IdMatch.compare(sc.scanned, sc.typed || data);
         rec.idChecks = [...(rec.idChecks || []), {
           at: now, method: "pdf417-barcode", idState: sc.idState, idExpiry: sc.idExpiry, idExpired: sc.idExpired,
-          calculatedAge: ageOn(data.dob), minAge: settings.minAge, visuallyMatched: true,
+          matched: match.matched, calculatedAge: ageOn(data.dob), minAge: settings.minAge, visuallyMatched: true,
           authenticityChecked: false
         }];
       }
@@ -374,11 +382,13 @@ screens.profile = {
         ${row("Legal name", c.legalName)}${row("Preferred name", c.preferredName)}
         ${row("Date of birth", c.dob ? `${c.dob} (age ${a})` : "")}${row("Phone", c.phone)}${row("Email", c.email)}
         ${row("Address", c.address)}${row("Emergency contact", [c.emergencyName, c.emergencyPhone].filter(Boolean).join(" · "))}
+        ${c.licenseNumber ? `<dt>License number</dt><dd><span id="licenseValue">••••${esc(String(c.licenseNumber).slice(-4))}</span> <button class="small ghost" id="toggleLicense">Show</button></dd>` : ""}
         ${row("First registered", fmtDate(c.createdAt))}</dl>
         <div class="actions"><button data-go="clientForm" data-id="${esc(c.id)}">Review / edit info</button>
         <button id="addVisit">Record visit today</button>
         <button data-go="flashPick" data-id="${esc(c.id)}">Add to today's queue</button>
         <button id="printPaper">Print contract (wet ink)</button></div></div>
+      ${IdVerifyUI.profileCard(c, true)}
       ${(c.idPhotos || []).length ? `<div class="card"><strong>ID photo (front)</strong><div class="sub mute">${esc(fmtDate(c.idPhotos[c.idPhotos.length - 1].at))}</div><img src="${c.idPhotos[c.idPhotos.length - 1].image}" alt="" style="max-width:420px;width:100%;border-radius:10px;margin-top:8px"></div>` : ""}
       <div class="card"><strong>Consent paperwork</strong>
         <div class="actions" style="margin-top:10px"><button class="primary" id="startPaper">Start paperwork (hand iPad to client)</button></div>
@@ -397,6 +407,21 @@ screens.profile = {
   },
   bind(root, { id }) {
     if (!DB.get(id)) return;
+    const override = $("#artistOverride", root);
+    const toggleLicense = $("#toggleLicense", root);
+    if (toggleLicense) toggleLicense.onclick = () => {
+      const shown = toggleLicense.textContent === "Hide";
+      $("#licenseValue", root).textContent = shown ? `••••${String(DB.get(id).licenseNumber).slice(-4)}` : DB.get(id).licenseNumber;
+      toggleLicense.textContent = shown ? "Show" : "Hide";
+    };
+    if (override) override.onclick = async () => {
+      if (!Perms.can("overrideId")) return;
+      const reason = prompt("Why did you verify this ID in person?");
+      if (!reason || !reason.trim()) return;
+      const c = DB.get(id), entry = { type: "artist-override", at: new Date().toISOString(), reason: reason.trim(), by: settings.artistName };
+      await DB.put({ ...c, idChecks: [...(c.idChecks || []), entry], updatedAt: new Date().toISOString() });
+      go("profile", { id });
+    };
     $("#saveNotes", root).onclick = async () => {
       await DB.put({ ...DB.get(id), notes: $("#notes", root).value, updatedAt: new Date().toISOString() });
       $("#noteMsg", root).textContent = "Saved";

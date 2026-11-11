@@ -145,9 +145,10 @@ const Intake = (() => {
       const done = text => {
         const r = AAMVA.parse(text);
         if (!r) { msg("That was not a driver's license barcode. Try the back of the card."); return false; }
-        Object.assign(K.client, { legalName: r.legalName, dob: r.dob });
+        Object.assign(K.client, { legalName: r.legalName, dob: r.dob, licenseNumber: r.idNumber });
         K.scannedAddress = r.address || "";
-        K.scan = { idState: r.idState, idExpiry: r.idExpiry, idExpired: r.idExpired };
+        K.scan = { idNumber: r.idNumber, idState: r.idState, idExpiry: r.idExpiry, idExpired: r.idExpired,
+          scanned: { legalName: r.legalName, dob: r.dob } };
         Scan.stop(); go("iInfo"); return true;
       };
       $("#iBack", root).onclick = () => { Scan.stop(); go("iInfo"); };
@@ -195,6 +196,7 @@ const Intake = (() => {
             emergencyName: d.emergencyName || c.emergencyName, emergencyPhone: d.emergencyPhone || c.emergencyPhone,
             visits: [...(c.visits || []), p.submittedAt], updatedAt: now };
         } else c = { type: "client", ...d, notes: "", visits: [p.submittedAt], createdAt: p.submittedAt, updatedAt: now };
+        if (p.client.licenseNumber) c.licenseNumber = p.client.licenseNumber;
         if (p.idCheck) c.idChecks = [...(c.idChecks || []), p.idCheck];
         if (p.idPhoto) c.idPhotos = [...(c.idPhotos || []), { at: p.submittedAt, image: p.idPhoto }].slice(-3);
         await DB.put(c);

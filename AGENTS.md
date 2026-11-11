@@ -19,6 +19,7 @@ backup.js | formeditor.js | aamva.js license barcode parser | scan.js camera/pho
 vendor/ = pdf-lib, zxing-wasm (do not edit). email-test/ = scratch, ignore.
 
 ## Rules
+- A license number may be stored in the encrypted client record; never in PDFs, emails, flash/public data or logs.
 - Bump the cache name in sw.js on every release.
 - No new dependencies or network calls (offline-first) without approval.
 - Do not claim legal compliance. Contract wording is a draft; do not rewrite it unasked.
