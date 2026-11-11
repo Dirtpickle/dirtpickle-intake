@@ -12,7 +12,7 @@ const Intake = (() => {
     P = await DB.getPublic();
     settings = { ...DEFAULTS, business: (P && P.business) || "Dirtpickle", artistName: (P && P.artistName) || DEFAULTS.artistName, minAge: (P && P.minAge) || 18 };
     startIdle();
-    go("iWelcome");
+    go("iWelcome", {}, { replace: true });
   }
   function startIdle() {
     clearInterval(idleTimer);

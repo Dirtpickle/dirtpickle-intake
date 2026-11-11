@@ -41,9 +41,16 @@ function findDuplicate(c, selfId) {
 let cur = { name: "home", params: {} };
 const screens = {};
 let pendingScan = null;
-function go(name, params = {}) {
+function go(name, params = {}, { fromPopstate = false, replace = false } = {}) {
   if (name !== "scan" && name !== "clientForm") pendingScan = null;
   if (cur.name === "scan") Scan.stop();
+  if (fromPopstate) {
+    Nav.replace(name, params);
+  } else if (replace) {
+    Nav.replace(name, params);
+  } else {
+    Nav.push(name, params);
+  }
   cur = { name, params };
   const s = screens[name];
   const root = $("#app");
@@ -51,6 +58,12 @@ function go(name, params = {}) {
   if (s.bind) s.bind(root, params);
   window.scrollTo(0, 0);
 }
+/* Back/forward: never render a pro screen unless the pro side is unlocked (intake kiosk must not reach saved data). */
+const INTAKE_SCREEN = /^[ik][A-Z]/;
+Nav.start((name, params) => {
+  if (!DB.isUnlocked() && !INTAKE_SCREEN.test(name)) return;
+  go(name, params, { fromPopstate: true });
+});
 function bar(title, { back, backId } = {}) {
   return `<header class="bar">
     ${back ? `<button class="small ghost" data-go="${back}"${backId ? ` data-id="${esc(backId)}"` : ""}>‹ Back</button>` : ""}
@@ -59,7 +72,11 @@ function bar(title, { back, backId } = {}) {
 }
 document.addEventListener("click", e => {
   const g = e.target.closest("[data-go]");
-  if (g && !g.disabled) { go(g.dataset.go, g.dataset.id ? { id: g.dataset.id } : {}); return; }
+  if (g && !g.disabled) {
+    if (g.dataset.go === "iWelcome" && cur.name === "pin") Nav.unlock();
+    go(g.dataset.go, g.dataset.id ? { id: g.dataset.id } : {});
+    return;
+  }
   if (e.target.closest("#lockNow")) lock();
 });
 
@@ -76,6 +93,7 @@ function pinHtml(title, hint, err = "") {
     <p class="mute" style="font-size:15px;margin-top:22px">${esc(hint)}</p>${intakeReady && DB && !DB.isUnlocked() ? `<button class="ghost small" data-go="iWelcome" style="margin-top:10px">‹ Back to check-in</button>` : ""}</div>`;
 }
 function showPin(mode, err = "") {
+  Nav.lock();
   cur = { name: "pin", params: {} };
   const title = mode === "setup1" ? "Create a 6-digit admin PIN" : mode === "setup2" ? "Enter the PIN again to confirm" : "Enter PIN";
   const hint = mode === "unlock" ? "" : "This PIN encrypts your records. If you forget it, the data cannot be recovered.";
@@ -118,6 +136,7 @@ async function publishPublic() {
 }
 let intakeReady = false;
 async function afterUnlock() {
+  Nav.unlock();
   const saved = DB.get("settings") || {};
   settings = { ...DEFAULTS, ...saved, pricing: { ...DEFAULTS.pricing, ...(saved.pricing || {}) } };
   settings = await Events.migrateLegacy(settings);
@@ -127,13 +146,13 @@ async function afterUnlock() {
   try { await Intake.importAll(); } catch (e) { /* inbox stays for next time */ }
   try { await Mailer.retryAll(); } catch (_) {}
   lastActive = Date.now();
-  go("home");
+  go("home", {}, { replace: true });
 }
 async function lock() {
   try { if (DB.isUnlocked()) await publishPublic(); } catch (_) {}
   DB.lock(); pinBuf = ""; pinFirst = null;
   $("#app").innerHTML = "";
-  if (await Intake.available()) { intakeReady = true; Intake.enter(); } else showPin("unlock");
+  if (await Intake.available()) { Nav.unlock(); intakeReady = true; Intake.enter(); } else showPin("unlock");
 }
 ["pointerdown", "keydown"].forEach(ev => document.addEventListener(ev, () => { lastActive = Date.now(); }, true));
 setInterval(() => {
