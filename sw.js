@@ -1,5 +1,5 @@
-const CACHE = "dp-app-v25";
-const SHELL = ["./", "index.html", "manifest.json", "css/style.css", "js/db.js", "js/mailer-config.js", "js/mailer.js", "js/pricing.js", "js/aamva.js", "js/scan.js", "js/idcheck.js", "js/events.js", "js/app.js", "js/events-ui.js", "js/contract.js", "js/consent.js", "js/aftercare-pdf.js", "js/aftercare.js", "js/aftercare-ui.js", "js/backup.js", "js/sessions.js", "js/formeditor.js", "js/intake.js",
+const CACHE = "dp-app-v26";
+const SHELL = ["./", "index.html", "manifest.json", "css/style.css", "js/db.js", "js/mailer-config.js", "js/mailer.js", "js/pricing.js", "js/aamva.js", "js/scan.js", "js/idcheck.js", "js/id-crop.js", "js/id-crop-ui.js", "js/events.js", "js/app.js", "js/events-ui.js", "js/contract.js", "js/consent.js", "js/aftercare-pdf.js", "js/aftercare.js", "js/aftercare-ui.js", "js/backup.js", "js/sessions.js", "js/formeditor.js", "js/intake.js",
   "js/initials-pad.js", "vendor/zxing/reader/index.js", "vendor/zxing/share.js", "vendor/zxing/zxing_reader.wasm", "vendor/pdf-lib/pdf-lib.min.js"];
 
 self.addEventListener("install", e => {

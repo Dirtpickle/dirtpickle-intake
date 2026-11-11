@@ -301,7 +301,7 @@ const Consent = (() => {
 
   function startIntake(P, returning) {
     if (!P || !P.template) return { error: "The check-in form is not ready. Please ask staff." };
-    K = { mode: "intake", client: {}, scan: null, frontPhoto: null, flashId: null, flashName: "", returning: !!returning, tpl: P.template, relayConfigured: !!P.relayConfigured, answers: {}, contact: {}, privacyAt: null };
+    K = { mode: "intake", client: {}, scan: null, scannedAddress: "", frontPhoto: null, flashId: null, flashName: "", returning: !!returning, tpl: P.template, relayConfigured: !!P.relayConfigured, answers: {}, contact: {}, privacyAt: null };
     return {};
   }
   screens.kPrivacy = {

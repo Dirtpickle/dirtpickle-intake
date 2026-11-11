@@ -55,6 +55,10 @@ const Intake = (() => {
     const warnings = K.idPhotoCheck.warnings.map(esc).join("; ");
     return `<div class="banner warn" style="margin-top:10px">This doesn't look like a license photo yet: ${warnings}. You can retake it, or continue.</div>`;
   }
+  function addressSuggestion(K) {
+    if (!K.scannedAddress || K.scannedAddress === K.client.address) return "";
+    return `<button type="button" class="small ghost" id="useScanAddress">Use address on license</button>`;
+  }
   const dkeys = ["legalName", "preferredName", "dob", "phone", "email", "address", "emergencyName", "emergencyPhone"];
   const fld = (k, label, K, a = "") => `<label for="i_${k}">${label}</label><input id="i_${k}" value="${esc(K.client[k] || "")}" ${a}>`;
   screens.iInfo = {
@@ -72,21 +76,25 @@ const Intake = (() => {
         <div class="cols"><div>${fld("legalName", "Full legal name *", K, 'autocapitalize="words"')}${fld("preferredName", "Preferred name", K, 'autocapitalize="words"')}
           <label for="i_dob">Date of birth *</label><input id="i_dob" type="date" value="${esc(K.client.dob || "")}">
           ${age !== null ? `<div class="banner ${under ? "bad" : "ok"}">${under ? `You must be at least ${settings.minAge} to get a tattoo here. Please see the artist.` : `Age ${age}`}</div>` : ""}</div>
-          <div>${fld("phone", "Phone", K, 'type="tel" inputmode="tel"')}${fld("email", "Email", K, 'type="email" inputmode="email" autocapitalize="off"')}${fld("address", "Address", K, 'autocapitalize="words"')}</div>
+          <div>${fld("phone", "Phone", K, 'type="tel" inputmode="tel"')}${fld("email", "Email", K, 'type="email" inputmode="email" autocapitalize="off"')}<label for="i_address">Address</label><input id="i_address" value="${esc(K.client.address || "")}" autocapitalize="words">${addressSuggestion(K)}</div>
           <div>${fld("emergencyName", "Emergency contact name", K)}${fld("emergencyPhone", "Emergency contact phone", K, 'type="tel" inputmode="tel"')}</div></div>
         <div id="iErr"></div><div class="actions"><button class="ghost" data-go="kPrivacy">‹ Back</button><button class="primary" id="iNext" ${under ? "disabled" : ""}>Continue</button></div>`;
     },
     bind(root) {
       const K = Consent.K();
       const collect = () => { for (const k of dkeys) K.client[k] = $("#i_" + k, root).value.trim(); };
+      const useAddress = $("#useScanAddress", root);
+      if (useAddress) useAddress.onclick = () => { $("#i_address", root).value = K.scannedAddress; collect(); go("iInfo"); };
       $("#i_dob", root).onchange = () => { collect(); go("iInfo"); };
       $("#iScanBtn", root).onclick = () => { collect(); go("iScan"); };
       $("#iFront", root).onchange = async e => {
         const f = e.target.files[0]; if (!f) return; collect();
         try {
           const canvas = await shrinkCanvas(f);
-          K.frontPhoto = canvas.toDataURL("image/jpeg", 0.8);
-          K.idPhotoCheck = IdCheck.analyze(canvas);
+          const choice = await IdCropUI.open(canvas, IdCrop.autoCrop(canvas));
+          if (choice.action === "retake") { go("iInfo"); return; }
+          K.frontPhoto = choice.canvas.toDataURL("image/jpeg", 0.8);
+          K.idPhotoCheck = IdCheck.analyze(choice.canvas);
           go("iInfo");
         } catch (err) { $("#iErr", root).innerHTML = `<div class="banner bad">Could not read that photo. Please try again.</div>`; }
       };
@@ -117,7 +125,8 @@ const Intake = (() => {
       const done = text => {
         const r = AAMVA.parse(text);
         if (!r) { msg("That was not a driver's license barcode. Try the back of the card."); return false; }
-        Object.assign(K.client, { legalName: r.legalName, dob: r.dob, address: r.address || K.client.address });
+        Object.assign(K.client, { legalName: r.legalName, dob: r.dob });
+        K.scannedAddress = r.address || "";
         K.scan = { idState: r.idState, idExpiry: r.idExpiry, idExpired: r.idExpired };
         Scan.stop(); go("iInfo"); return true;
       };

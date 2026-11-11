@@ -105,6 +105,25 @@ const IdCheck = (() => {
     return { ok: ratioOk && coverageOk, note: "the card shape does not look like a driver's license" };
   }
 
+  function cardBoundsFor(imageOrCanvas) {
+    const sample = makeSample(imageOrCanvas);
+    const bounds = cardBounds(sample);
+    if (!bounds) return null;
+    const width = bounds.right - bounds.left + 1;
+    const height = bounds.bottom - bounds.top + 1;
+    const ratio = Math.max(width / height, height / width);
+    const coverage = width * height / (sample.width * sample.height);
+    const ratioConfidence = Math.abs(ratio - CONFIG.cardRatio) / CONFIG.cardRatio <= CONFIG.cardRatioTolerance;
+    const coverageConfidence = coverage >= CONFIG.minCardCoverage && coverage <= CONFIG.maxCardCoverage;
+    const scaleX = (imageOrCanvas.width || imageOrCanvas.naturalWidth) / sample.width;
+    const scaleY = (imageOrCanvas.height || imageOrCanvas.naturalHeight) / sample.height;
+    return {
+      left: bounds.left * scaleX, right: (bounds.right + 1) * scaleX,
+      top: bounds.top * scaleY, bottom: (bounds.bottom + 1) * scaleY,
+      confident: ratioConfidence && coverageConfidence
+    };
+  }
+
   function texture(sample) {
     const bounds = cardBounds(sample);
     if (!bounds) return { ok: false, note: "there is not enough text-like detail" };
@@ -135,5 +154,5 @@ const IdCheck = (() => {
     return { probablyLicense: shapePassed && score >= CONFIG.minScore, score, warnings: results.filter(result => !result.ok).map(result => result.note) };
   }
 
-  return { analyze };
+  return { analyze, cardBounds: cardBoundsFor };
 })();

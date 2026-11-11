@@ -189,7 +189,7 @@ function idPanel(sc) {
   const age = ageOn(sc.fields.dob);
   const meets = age !== null && age >= settings.minAge;
   return `<div style="margin-top:14px">
-    <div class="banner ok" style="margin:8px 0">✓ ID barcode read. Name, birth date and address filled in below.</div>
+    <div class="banner ok" style="margin:8px 0">✓ ID barcode read. Name and birth date filled in below. Review the address and use the button if you want the license address.</div>
     <div class="banner ${meets ? "ok" : "bad"}" style="margin:8px 0">${meets ? "✓" : "✗"} Calculated age: ${age === null ? "unknown" : age}
       (${meets ? "meets" : "below"} the minimum of ${settings.minAge}).</div>
     ${sc.idExpired ? `<div class="banner bad" style="margin:8px 0">This ID shows an expiry date in the past (${esc(sc.idExpiry)}).</div>` : ""}
@@ -211,7 +211,7 @@ screens.scan = {
     const done = text => {
       const parsed = AAMVA.parse(text);
       if (!parsed) { msg("A barcode was read, but it is not a driver's license barcode. Try the back of the card."); return false; }
-      pendingScan = { fields: { legalName: parsed.legalName, dob: parsed.dob, address: parsed.address },
+      pendingScan = { fields: { legalName: parsed.legalName, dob: parsed.dob }, scannedAddress: parsed.address || "",
         idState: parsed.idState, idExpiry: parsed.idExpiry, idExpired: parsed.idExpired };
       go("clientForm", id ? { id } : {});
       return true;
@@ -235,6 +235,8 @@ screens.scan = {
 screens.clientForm = {
   html({ id }) {
     const c = { ...((id && DB.get(id)) || {}), ...((pendingScan && pendingScan.fields) || {}) };
+    const addressSuggestion = pendingScan && pendingScan.scannedAddress && pendingScan.scannedAddress !== (c.address || "")
+      ? `<button type="button" class="small ghost" id="useScanAddress">Use address on license</button>` : "";
     const f = (k, label, attrs = "") => `<label for="${k}">${label}</label><input id="${k}" value="${esc(c[k])}" ${attrs}>`;
     return `${bar(id ? "Review client info" : "New client", { back: id ? "profile" : "home", backId: id })}
       <div class="card"><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
@@ -248,7 +250,7 @@ screens.clientForm = {
           <div id="ageLine"></div></div>
         <div>${f("phone", "Phone number", 'type="tel" inputmode="tel"')}
           ${f("email", "Email address", 'type="email" inputmode="email" autocapitalize="off"')}
-          ${f("address", "Address", 'autocapitalize="words"')}</div>
+          <label for="address">Address</label><input id="address" value="${esc(c.address)}" autocapitalize="words">${addressSuggestion}</div>
         <div>${f("emergencyName", "Emergency contact name")}
           ${f("emergencyPhone", "Emergency contact phone", 'type="tel" inputmode="tel"')}</div>
       </div>
@@ -258,6 +260,8 @@ screens.clientForm = {
   },
   bind(root, { id }) {
     const v = k => $("#" + k, root).value.trim();
+    const useAddress = $("#useScanAddress", root);
+    if (useAddress) useAddress.onclick = () => { $("#address", root).value = pendingScan.scannedAddress; };
     const ageLine = $("#ageLine", root), save = $("#saveClient", root);
     const refreshAge = () => {
       const a = ageOn($("#dob", root).value);
