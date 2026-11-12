@@ -2,11 +2,11 @@
 /* Consent forms, signature, PDF generation, client check-in (kiosk) mode, and the Documents list.
    Signed consent records are write-once: they hold a full snapshot of the wording the client saw. */
 const Consent = (() => {
-  const DEFAULT_PRIVACY = "Your privacy. This app works completely offline. Everything you enter, including your ID details and a photo of your ID, health answers and signature, is saved only on this device and is encrypted. It is not uploaded to any cloud or shared with anyone, and only the artist can open it. A copy of your signed agreement will be emailed to the email address you give us. That is the only information that leaves this device.";
+  const DEFAULT_PRIVACY = "Your privacy. This app works completely offline. Everything you enter, including your ID details and a photo of your ID, health answers and signature, is saved only on this device and is encrypted. It is not uploaded to any cloud or shared with anyone, and only the artist can open it. If you ask for a copy, your signed agreement will be emailed to the address you give us. That is the only information that leaves this device.";
   const privacyText = () => {
     const text = (K && K.tpl && K.tpl.privacy) || DEFAULT_PRIVACY;
     const relay = K && (K.mode === "intake" ? K.relayConfigured : Mailer.configured(Mailer.relayFromSettings()));
-    return relay ? text : text.replace("A copy of your signed agreement will be emailed to the email address you give us.", "Ask the artist for a copy.");
+    return relay ? text : text.replace("If you ask for a copy, your signed agreement will be emailed to the address you give us.", "Ask the artist for a copy.");
   };
 
   async function init() {
@@ -361,25 +361,26 @@ const Consent = (() => {
     }
   };
 
-  const emailNotice = () => {
-    const em = K.mode === "intake" ? (K.client || {}).email : (K.contact || {}).email;
-    const relay = K.mode === "intake" ? K.relayConfigured : Mailer.configured(Mailer.relayFromSettings());
-    return em && relay ? `<div class="banner ok" style="font-weight:400">A copy of this signed agreement will be emailed to <b>${esc(em)}</b>. If you do not see it soon, please check your junk or spam folder.</div>`
-      : `<div class="banner warn" style="font-weight:400">${em && !relay ? "Ask the artist for a copy." : "You did not give an email address, so no copy will be emailed. Please ask the artist for a copy."}</div>`;
-  };
+  const relayOk = () => K.mode === "intake" ? !!K.relayConfigured : Mailer.configured(Mailer.relayFromSettings());
+  const emailNotice = () => ConsentCopy.notice(K.copy, relayOk());
+  const defaultEmail = () => (K.mode === "intake" ? (K.client || {}).email : (K.contact || {}).email) || "";
   screens.kSign = {
     html: () => `${kbar("Read and sign")}
       <div class="card agree">${K.tpl.agreement.map(p => `<p>${esc(p)}</p>`).join("")}</div>
-      ${emailNotice()}
+      ${ConsentCopy.html(defaultEmail(), relayOk())}
       <label>Sign below with your finger or Apple Pencil</label>
       <canvas id="sig" class="sig"></canvas>
       <div class="actions"><button class="ghost" id="sigClear">Clear</button><button class="ghost" data-go="kQuestions">‹ Back</button>
         <button class="primary" id="kSubmit" disabled>Agree and submit</button></div><div id="kErr"></div>`,
     bind(root) {
       const submit = $("#kSubmit", root);
+      ConsentCopy.bind(root);
       const pad = sigPad($("#sig", root), ok => { submit.disabled = !ok; });
       $("#sigClear", root).onclick = () => pad.clear();
       submit.onclick = async () => {
+        const copy = ConsentCopy.read(root);
+        if (copy.error) { $("#kErr", root).innerHTML = `<div class="banner bad">${esc(copy.error)}</div>`; return; }
+        K.copy = copy;
         submit.disabled = true; submit.textContent = "Saving…";
         try { const docId = K.mode === "intake" ? await finishIntake(pad.data()) : await finish(pad.data()); go("kDone", { id: docId }); }
         catch (e) { $("#kErr", root).innerHTML = `<div class="banner bad">Could not save: ${esc(e.message)}. Please tell the artist.</div>`; submit.disabled = false; submit.textContent = "Agree and submit"; }
@@ -401,7 +402,7 @@ const Consent = (() => {
     const sha256 = hex(await crypto.subtle.digest("SHA-256", bytes));
     await DB.seal({ v: 1, submittedAt: now, returning: K.returning, client: c, idCheck, idPhoto: K.frontPhoto,
       ...(K.idPhotoCheck ? { idPhotoCheck: { score: K.idPhotoCheck.score } } : {}), session,
-      consent: { id: docId, signedAt: now, template: K.tpl, answers: K.answers, signature, idCheck, ageAtSigning, privacy, pdf: bytesToB64(bytes), sha256 } });
+      consent: { id: docId, signedAt: now, copyTo: K.copy.to || "", template: K.tpl, answers: K.answers, signature, idCheck, ageAtSigning, privacy, pdf: bytesToB64(bytes), sha256 } });
     return docId;
   }
 
@@ -422,11 +423,11 @@ const Consent = (() => {
       type: "consent", id: docId, locked: true, clientId: client.id, sessionId: session.id, signedAt: now,
       clientSnapshot: { id: client.id, legalName: client.legalName, dob: client.dob, phone: client.phone, email: client.email, address: client.address },
       template: K.tpl, answers: K.answers, signature, idCheck, ageAtSigning, privacy: { text: privacyText(), at: K.privacyAt || now },
-      pdf: bytesToB64(bytes), sha256: hash, emailStatus: "not-sent"
+      pdf: bytesToB64(bytes), sha256: hash, emailStatus: "not-sent", copyTo: K.copy.to || ""
     };
     session.consentId = docId; session.updatedAt = now;
     await DB.put(session); await DB.put(record); await DB.put(client);
-    if (client.email && Mailer.configured(Mailer.relayFromSettings())) Mailer.send(record).catch(() => {});
+    if (K.copy.wants && Mailer.configured(Mailer.relayFromSettings())) Mailer.send(record).catch(() => {});
     return docId;
   }
 
@@ -467,7 +468,7 @@ const Consent = (() => {
     const record = { type: "countersign", id: "cs-" + consentId, locked: true, consentId, clientId: d.clientId, sessionId: d.sessionId, signedAt: now,
       clientSnapshot: { ...d.clientSnapshot, email: cl.email || d.clientSnapshot.email }, pdf: bytesToB64(bytes), sha256, emailStatus: "not-sent" };
     await DB.put(record);
-    if (cl.email && Mailer.configured(Mailer.relayFromSettings())) Mailer.send(record).catch(() => {});
+    if (d.copyTo && Mailer.configured(Mailer.relayFromSettings())) Mailer.send({ ...record, to: d.copyTo }).catch(() => {});
   }
 
   function wirePdf(root, rec, ids, name) {

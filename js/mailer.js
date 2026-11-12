@@ -6,7 +6,7 @@ const Mailer = (() => {
     return { url: (s.emailRelayUrl || "").trim(), secret: s.relaySecret || "" };
   };
   const configured = relay => !!(relay && relay.url && relay.secret);
-  const addressFor = doc => doc.to || (doc.clientSnapshot || {}).email || (doc.clientId && (DB.get(doc.clientId) || {}).email) || "";
+  const addressFor = doc => doc.to || doc.copyTo || (doc.clientSnapshot || {}).email || (doc.clientId && (DB.get(doc.clientId) || {}).email) || "";
   const fileNameFor = doc => doc.type === "aftercare" ? `${(doc.clientSnapshot.legalName || "client").replace(/[^a-z0-9]+/gi, "-")}-aftercare-${doc.createdAt.slice(0, 10)}.pdf` : Consent.fileName(doc);
   const bytesToB64 = u8 => { let s = ""; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); };
   let retrying = false;

@@ -75,3 +75,25 @@ test("removes the email promise from no-relay client wording", async ({ page }) 
   expect(text).not.toContain("will be emailed");
   expect(text).toContain("Ask the artist for a copy.");
 });
+
+test("patron copy choice: validates the address and only asks for a copy when ticked", async ({ page }) => {
+  await page.goto("/");
+  const out = await page.evaluate(() => {
+    const root = document.createElement("div");
+    root.innerHTML = ConsentCopy.html("", true);
+    document.body.appendChild(root);
+    ConsentCopy.bind(root);
+    const none = ConsentCopy.read(root);
+    root.querySelector("#copyWant").click();
+    const hiddenAfter = root.querySelector("#copyBox").hidden;
+    root.querySelector("#copyTo").value = "bad";
+    const bad = ConsentCopy.read(root);
+    root.querySelector("#copyTo").value = " me@example.com ";
+    return { none, hiddenAfter, bad, good: ConsentCopy.read(root), noRelay: ConsentCopy.html("a@b.co", false).includes("copyWant") };
+  });
+  expect(out.none).toEqual({ wants: false, to: "" });
+  expect(out.hiddenAfter).toBe(false);
+  expect(out.bad.error).toBeTruthy();
+  expect(out.good).toEqual({ wants: true, to: "me@example.com" });
+  expect(out.noRelay).toBe(false);
+});

@@ -98,17 +98,21 @@ function showPin(mode, err = "") {
   const title = mode === "setup1" ? "Create a 6-digit admin PIN" : mode === "setup2" ? "Enter the PIN again to confirm" : "Enter PIN";
   const hint = mode === "unlock" ? "" : "This PIN encrypts your records. If you forget it, the data cannot be recovered.";
   $("#app").innerHTML = pinHtml(title, hint, err);
-  $("#app").querySelector(".keys").onclick = async e => {
-    const b = e.target.closest("button[data-k]");
-    if (!b) return;
-    if (Date.now() < pinBusyUntil) return;
-    const k = b.dataset.k;
+  const keys = $("#app").querySelector(".keys");
+  const press = async e => {
+    const btn = e.target.closest("button[data-k]");
+    if (!btn || Date.now() < pinBusyUntil) return;
+    const k = btn.dataset.k;
     if (k === "del") pinBuf = pinBuf.slice(0, -1);
     else if (pinBuf.length < PIN_LEN) pinBuf += k;
-    if (pinBuf.length < PIN_LEN) { showPin(mode); return; }
+    $("#app").querySelectorAll(".dots i").forEach((dot, i) => dot.classList.toggle("on", i < pinBuf.length));
+    if (pinBuf.length < PIN_LEN) return;
     const entered = pinBuf; pinBuf = "";
     await submitPin(mode, entered);
   };
+  /* Act on touch-down so quick taps are never lost; click only handles keyboard activation. */
+  keys.onpointerdown = e => { e.preventDefault(); press(e); };
+  keys.onclick = e => { if (e.detail === 0) press(e); };
 }
 async function submitPin(mode, pin) {
   if (mode === "setup1") { pinFirst = pin; showPin("setup2"); return; }
