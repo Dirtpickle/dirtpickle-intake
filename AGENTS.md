@@ -15,6 +15,7 @@ Keep replies short.
 ## Layout (js/)
 db.js store/crypto/backup-import | app.js boot/router/PIN/home/client/settings | consent.js contract UI, signature, PDFs, kiosk
 contract.js contract template data | intake.js intake side + inbox import | sessions.js queue/flash/session/timer
+appointments.js appointment data/rules | appointments-ui.js appointment screens | calendar-sync.js relay queue | calendar-settings.js settings
 backup.js | formeditor.js | aamva.js license barcode parser | scan.js camera/photo scan | sw.js service worker
 vendor/ = pdf-lib, zxing-wasm (do not edit). email-test/ = scratch, ignore.
 

@@ -2,7 +2,7 @@
 /* Dirtpickle intake app: Phase 1 (shell, PIN, local encrypted DB, client intake + search). */
 const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const DEFAULTS = { type: "settings", id: "settings", business: "Dirtpickle", minAge: 18, autoLockMin: 5, backupDays: 7, lastBackupAt: null, artistName: "Dirtpickle (Mike Peterson)", pricing: { rate: 120, round: 5 } };
+const DEFAULTS = { type: "settings", id: "settings", business: "Dirtpickle", minAge: 18, autoLockMin: 5, backupDays: 7, lastBackupAt: null, artistName: "Dirtpickle (Mike Peterson)", appointmentDurationMin: 120, calendarSync: false, calendarName: "", pricing: { rate: 120, round: 5 } };
 let settings = { ...DEFAULTS };
 
 /* ---------- helpers ---------- */
@@ -74,7 +74,7 @@ document.addEventListener("click", e => {
   const g = e.target.closest("[data-go]");
   if (g && !g.disabled) {
     if (g.dataset.go === "iWelcome" && cur.name === "pin") Nav.unlock();
-    go(g.dataset.go, g.dataset.id ? { id: g.dataset.id } : {});
+    go(g.dataset.go, g.dataset.id ? { id: g.dataset.id } : g.dataset.clientId ? { clientId: g.dataset.clientId } : {});
     return;
   }
   if (e.target.closest("#lockNow")) lock();
@@ -146,6 +146,7 @@ async function afterUnlock() {
   await publishPublic(); intakeReady = true;
   try { await Intake.importAll(); } catch (e) { /* inbox stays for next time */ }
   try { await Mailer.retryAll(); } catch (_) {}
+  try { await CalendarSync.retryAll(); } catch (_) {}
   lastActive = Date.now();
   go("home", {}, { replace: true });
 }
@@ -174,7 +175,7 @@ screens.home = {
       <button class="tile" data-go="clients">CLIENTS<small>${clients().length} on file</small></button>
       <button class="tile" data-go="queue">TODAY / QUEUE<small>${DB.all("session").filter(s => ["waiting", "paperwork", "ready", "inprogress"].includes(s.status)).length} active</small></button>
       <button class="tile" data-go="events">EVENTS<small>${esc((Events.getActive() || {}).name || "No active event")}</small></button>
-      <button class="tile soon">APPOINTMENTS<small>Coming in a later phase</small></button>
+      <button class="tile" data-go="appointments">APPOINTMENTS<small>${Appointments.upcoming().length} upcoming</small></button>
       <button class="tile" data-go="flash">FLASH<small>${DB.all("flash").length} designs</small></button>
       <button class="tile" data-go="documents">DOCUMENTS<small>${DB.all("consent").length} signed</small></button>
       <button class="tile" data-go="settings">SETTINGS<small>Business, age, auto-lock</small></button>
@@ -382,7 +383,7 @@ screens.clientForm = {
 };
 
 /* ---------- Deleting (explicit, confirmed; also removes the client's signed paperwork) ---------- */
-const CLIENT_TYPES = ["session", "consent", "countersign", "aftercare", "photo"];
+const CLIENT_TYPES = ["session", "consent", "countersign", "aftercare", "photo", "appointment"];
 function clientFootprint(id) {
   const rows = [];
   for (const t of CLIENT_TYPES) for (const r of DB.all(t)) if (r.clientId === id) rows.push(r);
@@ -418,7 +419,8 @@ screens.profile = {
         ${row("Address", c.address)}${row("Emergency contact", [c.emergencyName, c.emergencyPhone].filter(Boolean).join(" · "))}
         ${c.licenseNumber ? `<dt>License number</dt><dd><span id="licenseValue">••••${esc(String(c.licenseNumber).slice(-4))}</span> <button class="small ghost" id="toggleLicense">Show</button></dd>` : ""}
         ${row("First registered", fmtDate(c.createdAt))}</dl>
-        <div class="actions"><button data-go="clientForm" data-id="${esc(c.id)}">Review / edit info</button>
+      <div class="actions"><button data-go="clientForm" data-id="${esc(c.id)}">Review / edit info</button>
+        <button data-go="appointmentForm" data-client-id="${esc(c.id)}">Book appointment</button>
         <button id="addVisit">Record visit today</button>
         <button data-go="flashPick" data-id="${esc(c.id)}">Add to today's queue</button>
         <button id="printPaper">Print contract (wet ink)</button></div></div>
@@ -464,7 +466,7 @@ screens.profile = {
     $("#printPaper", root).onclick = () => Consent.printPaper(id);
     $("#delClient", root).onclick = async () => {
       const n = clientFootprint(id);
-      const msg = `Permanently delete ${DB.get(id).legalName}, ${n.filter(r => r.type === "session").length} session(s), ${n.filter(r => r.type === "photo").length} photo(s) and ${n.filter(r => !["session", "photo"].includes(r.type)).length} signed document(s)? This cannot be undone.`;
+      const msg = `Permanently delete ${DB.get(id).legalName}, ${n.filter(r => r.type === "session").length} session(s), ${n.filter(r => r.type === "photo").length} photo(s), ${n.filter(r => r.type === "appointment").length} appointment(s) and ${n.filter(r => !["session", "photo", "appointment"].includes(r.type)).length} signed document(s)? This cannot be undone.`;
       if (!confirm(msg)) return;
       await deleteClient(id); go("clients");
     };
@@ -492,6 +494,8 @@ screens.settings = {
       <label for="autoLock">Auto-lock after (minutes of no activity)</label><input id="autoLock" type="number" inputmode="numeric" min="1" max="120" value="${settings.autoLockMin}">
       <hr><strong>Email relay</strong><p class="mute" style="font-size:16px">The relay URL and secret are encrypted with your PIN and never available during client check-in.</p>
       ${Mailer.settingsHtml()}
+      <hr><strong>Calendar sync</strong><p class="mute" style="font-size:16px">Appointments use the same Apps Script relay as email. Calendar events contain only the client's first name and tattoo summary.</p>
+      ${CalendarSettings.settingsHtml()}
       <div class="actions"><button class="primary" id="saveSettings">Save settings</button><span id="setMsg" class="mute" style="align-self:center"></span></div></div>
     <div class="card"><strong>Artist signature and initials</strong>
       <p class="mute" style="font-size:16px">Used on contracts you print and when you countersign a signed contract. Stored encrypted. Never available to the intake side.</p>
@@ -509,16 +513,18 @@ screens.settings = {
       <button id="printBlank" style="width:100%;margin-top:12px">Print blank contract (wet ink)</button></div>
     <div class="card"><button data-go="backup" style="width:100%">Backup, restore and change PIN</button></div>
     <div class="card"><strong>Erase test data</strong>
-      <p class="mute" style="font-size:16px">Deletes every client, session, signed contract and countersigned copy on this device. Your settings, form wording, flash designs and saved signature are kept.</p>
+      <p class="mute" style="font-size:16px">Deletes every client, appointment, session, signed contract and countersigned copy on this device. Your settings, form wording, flash designs and saved signature are kept.</p>
       <button class="danger" id="eraseAll">Erase all client data…</button></div>
     <div class="card"><button data-go="aftercare" style="width:100%">Manage aftercare templates</button></div>`,
   bind(root) {
     $("#printBlank", root).onclick = () => Consent.printPaper();
     Mailer.bindSettings(root);
+    CalendarSettings.bindSettings(root);
     $("#eraseAll", root).onclick = async () => {
       const n = DB.all("client").length;
       if (!n) { alert("There are no clients to erase."); return; }
-      const t = prompt(`This permanently deletes ${n} client(s) and ALL their paperwork. Type ERASE to confirm.`);
+      const appointments = DB.all("appointment").length;
+      const t = prompt(`This permanently deletes ${n} client(s), ${appointments} appointment(s), and ALL their paperwork. Type ERASE to confirm.`);
       if (t !== "ERASE") return;
       await eraseAllClientData(); go("settings");
     };
@@ -532,7 +538,7 @@ screens.settings = {
     $("#saveSettings", root).onclick = async () => {
       const minAge = Math.max(0, Math.min(99, parseInt($("#minAge", root).value, 10) || 18));
       const autoLockMin = Math.max(1, Math.min(120, parseInt($("#autoLock", root).value, 10) || 5));
-      settings = { ...Pricing.readSettings(root, Mailer.readSettings(root, settings)), business: $("#biz", root).value.trim() || "Dirtpickle", artistName: $("#artist", root).value.trim() || DEFAULTS.artistName, minAge, autoLockMin };
+      settings = { ...CalendarSettings.readSettings(root, Pricing.readSettings(root, Mailer.readSettings(root, settings))), business: $("#biz", root).value.trim() || "Dirtpickle", artistName: $("#artist", root).value.trim() || DEFAULTS.artistName, minAge, autoLockMin };
       await DB.put(settings);
       await publishPublic();
       $("#setMsg", root).textContent = "Saved";
