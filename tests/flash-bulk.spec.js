@@ -10,9 +10,10 @@ test('imports every test flash image', async ({ page }) => {
   test.skip(!images.length, 'test-flash folder is missing or empty');
   await setup(page);
   await page.locator('[data-go="flash"]').click();
+  page.on('dialog', async dialog => dialog.accept(dialog.message().startsWith('Kind') ? 'repeatable' : 'Sheet 1'));
   const started = Date.now();
   await page.locator('#fImport').setInputFiles(images.map(name => path.join(folder, name)));
-  const elapsed = Date.now() - started;
   await expect(page.locator('.fitem')).toHaveCount(images.length);
+  const elapsed = Date.now() - started;
   console.log(`Imported ${images.length} flash images in ${elapsed} ms`);
 });

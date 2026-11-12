@@ -12,7 +12,6 @@
         ${field("eventDate", "Date", e.date, "date")}
         ${field("eventMin", "Flash minimum price ($)", e.flashMin, "number")}
         ${field("eventMax", "Flash maximum price ($)", e.flashMax, "number")}
-        <label class="check"><input id="eventTaken" type="checkbox" ${e.markTaken !== false ? "checked" : ""}> Mark a flash design unavailable once someone picks it</label>
         <label class="check"><input id="eventHourly" type="checkbox" ${e.hourlyApplies ? "checked" : ""}> Hourly pricing applies to flash sessions</label>
         <div class="actions"><button class="primary" id="saveEvent">${event ? "Save changes" : "Start event"}</button><button class="ghost" data-go="events">Cancel</button></div>
         ${event && event.active ? `<button class="danger" id="endEvent">End event</button>` : ""}<div id="eventMsg"></div></div>`;
@@ -21,8 +20,7 @@
   function read(root) {
     return {
       name: $("#eventName", root).value.trim(), date: $("#eventDate", root).value,
-      flashMin: parseFloat($("#eventMin", root).value), flashMax: parseFloat($("#eventMax", root).value),
-      markTaken: $("#eventTaken", root).checked, hourlyApplies: $("#eventHourly", root).checked
+      flashMin: parseFloat($("#eventMin", root).value), flashMax: parseFloat($("#eventMax", root).value), hourlyApplies: $("#eventHourly", root).checked
     };
   }
 

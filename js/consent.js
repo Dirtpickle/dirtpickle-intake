@@ -194,7 +194,7 @@ const Consent = (() => {
       }
       onChange(len > 80);
     });
-    const up = () => { down = false; onChange(len > 80); };
+    const up = e => { e.preventDefault(); down = false; onChange(len > 80); };
     canvas.addEventListener("pointerup", up); canvas.addEventListener("pointercancel", up);
     return { clear() { blank(); len = 0; onChange(false); }, data: () => canvas.toDataURL("image/png") };
   }
@@ -297,7 +297,7 @@ const Consent = (() => {
         ${si === 4 ? `<button type="button" class="small ghost" data-all-no="${si}" style="margin-bottom:8px">Answer No to all</button>` : ""}
         ${s.questions.map(qHtml).join("")}
         ${s.questions.filter(q => q.type === "check").length > 1 ? `<button class="small ghost" data-all="${si}" style="margin-top:8px">Tick all in this section</button>` : ""}
-        ${s.initials ? `<div class="qrow"><div class="ql">Draw your initials *</div><canvas data-initials="${si}" width="120" height="60" style="width:120px;height:60px;border:1px solid #999;background:#fff;touch-action:none"></canvas><button type="button" class="small ghost" data-initials-clear="${si}">Clear</button></div>` : ""}</div>`).join("")}
+        ${s.initials ? `<div class="qrow initials-pad-wrap"><div class="ql">Draw your initials *</div><div class="initials-pad"><canvas data-initials="${si}" width="420" height="150" style="width:100%;max-width:420px;height:150px;border:1px solid #999;background:#fff;touch-action:none"></canvas><span class="initials-hint">Initial here</span></div><button type="button" class="small ghost" data-initials-clear="${si}">Clear</button></div>` : ""}</div>`).join("")}
       <div id="kErr"></div><div class="actions"><button class="ghost" data-go="${K.mode === "intake" ? "iInfo" : "kReview"}">‹ Back</button><button class="primary" id="kNext">Continue</button></div>`,
     bind(root) {
       root.addEventListener("click", e => {

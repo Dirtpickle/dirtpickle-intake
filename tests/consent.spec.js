@@ -78,6 +78,29 @@ test("requires drawn initials before continuing", async ({ page }) => {
   await expect(page.locator("#kErr")).toContainText("Please draw your initials");
 });
 
+test("initials pads are large enough on a tablet viewport", async ({ page }) => {
+  await page.setViewportSize({ width: 820, height: 1180 });
+  await setup(page);
+  await page.locator('[data-go="clientForm"]').click();
+  await page.locator("#legalName").fill("Initials Tablet");
+  await page.locator("#dob").fill("1990-01-01");
+  await page.locator("#phone").fill("9285550100");
+  await page.locator("#email").fill("initials@example.com");
+  await page.locator("#skipIdPhoto").click();
+  await page.locator("#photoOverrideReason").fill("Routine test artist override");
+  await page.locator("#confirmPhotoOverride").click();
+  await page.locator("#saveClient").click();
+  await page.locator("#startPaper").click();
+  await page.locator("#privOk").check();
+  await page.locator("#kNext").click();
+  await page.locator("#kNext").click();
+  const pad = page.locator("[data-initials]").first();
+  await expect(pad).toBeVisible();
+  const size = await pad.evaluate(el => ({ width: el.getBoundingClientRect().width, height: el.getBoundingClientRect().height }));
+  expect(size.width).toBeGreaterThanOrEqual(300);
+  expect(size.height).toBeGreaterThanOrEqual(120);
+});
+
 test("requires the single final acknowledgment", async ({ page }) => {
   await setup(page);
   await newClient(page, "Final Tick Client");

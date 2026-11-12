@@ -29,5 +29,8 @@ vendor/ = pdf-lib, zxing-wasm (do not edit). email-test/ = scratch, ignore.
 ## Verify
 `npm install && npx playwright install chromium && npm test`
 
+## Adding a shop later
+Use the local `FlashStore` seam in `js/flash-store.js` for shop reservations, order imports, and redemption. Keep payment, network, and buyer credentials out of the app until an explicit offline/security design is approved; `redeem` and `importOrders` are intentionally documented stubs.
+
 ## Protected / not Codex's job
 - vendor/, manifest.json icons. Pushing to GitHub, deploying, G:\My Drive. Real-device (iPad) testing.

@@ -7,7 +7,6 @@ const Events = (() => {
     date: "2026-11-27",
     flashMin: 80,
     flashMax: 150,
-    markTaken: true,
     hourlyApplies: false
   };
 
@@ -18,7 +17,6 @@ const Events = (() => {
       date: input.date || DEFAULTS.date,
       flashMin: numberOr(input.flashMin, DEFAULTS.flashMin),
       flashMax: numberOr(input.flashMax, DEFAULTS.flashMax),
-      markTaken: input.markTaken !== false,
       hourlyApplies: input.hourlyApplies === true,
       active: input.active !== false,
       createdAt: input.createdAt || new Date().toISOString(),
@@ -66,7 +64,6 @@ const Events = (() => {
       date: legacy.date || DEFAULTS.date,
       flashMin: legacy.flashMin ?? legacy.minPrice,
       flashMax: legacy.flashMax ?? legacy.maxPrice,
-      markTaken: legacy.markTaken,
       hourlyApplies: legacy.hourlyApplies,
       createdAt: legacy.createdAt
     });
@@ -80,7 +77,7 @@ const Events = (() => {
     const active = getActive();
     return active ? { ...active, minPrice: active.flashMin, maxPrice: active.flashMax } : {
       name: "Event", flashMin: 80, flashMax: 150, minPrice: 80, maxPrice: 150,
-      markTaken: true, hourlyApplies: false
+      hourlyApplies: false
     };
   }
 

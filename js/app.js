@@ -137,6 +137,7 @@ async function publishPublic() {
 let intakeReady = false;
 async function afterUnlock() {
   Nav.unlock();
+  await Flash.migrateAll();
   const saved = DB.get("settings") || {};
   settings = { ...DEFAULTS, ...saved, pricing: { ...DEFAULTS.pricing, ...(saved.pricing || {}) } };
   settings = await Events.migrateLegacy(settings);
@@ -388,7 +389,7 @@ function clientFootprint(id) {
   return rows;
 }
 async function freeFlashFor(sessions) {
-  for (const s of sessions) { const f = s.flashId && DB.get(s.flashId); if (f && f.status === "taken") await DB.put({ ...f, status: "available" }); }
+  for (const s of sessions) await Flash.release(s.flashId);
 }
 async function deleteClient(id) {
   const rows = clientFootprint(id);
@@ -544,6 +545,7 @@ screens.settings = {
   try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (_) {}
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
   await DB.open();
+  if (await DB.hasPin() && DB.isUnlocked()) await Flash.migrateAll();
   if (!(await DB.hasPin())) { showPin("setup1"); return; }
   if (await Intake.available()) { intakeReady = true; Intake.enter(); } else showPin("unlock");
 })();
