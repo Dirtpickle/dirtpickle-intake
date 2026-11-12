@@ -12,6 +12,16 @@ const IdCropUI = (() => {
     return { x, y, w, h };
   }
 
+  /* Moves only the dragged edges; the opposite edge stays put and every edge stays inside the photo. */
+  function resizeRect(base, type, dx, dy, width, height) {
+    let left = base.x, top = base.y, right = base.x + base.w, bottom = base.y + base.h;
+    if (type.includes("w")) left = Math.max(0, Math.min(left + dx, right - MIN_SIZE));
+    if (type.includes("e")) right = Math.min(width, Math.max(right + dx, left + MIN_SIZE));
+    if (type.includes("n")) top = Math.max(0, Math.min(top + dy, bottom - MIN_SIZE));
+    if (type.includes("s")) bottom = Math.min(height, Math.max(bottom + dy, top + MIN_SIZE));
+    return { x: left, y: top, w: right - left, h: bottom - top };
+  }
+
   function open(source, auto) {
     return new Promise(resolve => {
       const screen = document.createElement("div");
@@ -62,12 +72,7 @@ const IdCropUI = (() => {
         if (!pointer) return;
         const point = imagePoint(event), dx = point.x - pointer.x, dy = point.y - pointer.y, base = pointer.rect;
         if (pointer.type === "move") rect = clampRect({ x: base.x + dx, y: base.y + dy, w: base.w, h: base.h }, source.width, source.height);
-        else {
-          let left = base.x, top = base.y, right = base.x + base.w, bottom = base.y + base.h;
-          if (pointer.type.includes("w")) left += dx; if (pointer.type.includes("e")) right += dx;
-          if (pointer.type.includes("n")) top += dy; if (pointer.type.includes("s")) bottom += dy;
-          rect = clampRect({ x: left, y: top, w: right - left, h: bottom - top }, source.width, source.height);
-        }
+        else rect = resizeRect(base, pointer.type, dx, dy, source.width, source.height);
         draw();
       };
       canvas.onpointerup = () => { pointer = null; };
