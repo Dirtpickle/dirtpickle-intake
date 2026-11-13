@@ -70,11 +70,7 @@ const Sessions = (() => {
   document.addEventListener("click", async e => {
     const b = e.target.closest("[data-act]"); if (!b) return;
     const s = DB.get(b.dataset.id); if (!s) return;
-    if (b.dataset.act === "confirmid") {
-      const cl = DB.get(s.clientId); const ids = (cl.idChecks || []).slice();
-      ids[ids.length - 1] = { ...ids[ids.length - 1], visuallyMatched: true, visuallyConfirmedAt: new Date().toISOString() };
-      await DB.put({ ...cl, idChecks: ids, updatedAt: new Date().toISOString() }); go("queue"); return;
-    }
+    if (b.dataset.act === "confirmid") { await IdConfirm.open(s.clientId); go("queue"); return; }
     if (b.dataset.act === "paper") {
       const r = Consent.start(s.clientId, s.id);
       if (r.error) { alert(r.error); return; }
