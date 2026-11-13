@@ -32,7 +32,7 @@ const Intake = (() => {
       <div class="grid" style="margin-top:28px"><button class="tile primary" id="iNew">NEW CLIENT<small>First time here</small></button>
       <button class="tile" id="iRet">BEEN HERE BEFORE<small>Quick check-in</small></button></div></div>`,
     bind(root) {
-      const begin = returning => () => { const r = Consent.startIntake(P, returning); if (r.error) { alert(r.error); return; } go("kPrivacy"); };
+      const begin = returning => () => { const r = Consent.startIntake(P, returning); if (r.error) { alert(r.error); return; } go("iStaffId"); };
       $("#iNew", root).onclick = begin(false); $("#iRet", root).onclick = begin(true);
     }
   };
@@ -65,15 +65,13 @@ const Intake = (() => {
   screens.iInfo = {
     html() {
       const K = Consent.K();
+      if (!K.frontPhoto) return "";
       const age = ageOn(K.client.dob), under = age !== null && age < settings.minAge;
       return `${head()}<h2 style="margin:0 0 12px">${K.returning ? "Welcome back! Please re-enter your details." : "Your information"}</h2>
         ${K.returning ? `<div class="mute" style="margin-bottom:8px">Use the same phone number or email as last time so we can find your record.</div>` : ""}
-        <div class="card"><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><button class="primary" id="iScanBtn">Scan driver's license</button>
-          <span class="mute" style="font-size:16px">Or type your details below.</span></div>
-          ${K.scan ? `<div class="banner ok" style="margin:12px 0 0">✓ ID barcode read. Your details were filled in. Please check them. The artist will confirm your ID in person.</div>` : ""}</div>
-        ${IdPhoto.block({ photo: K.frontPhoto, check: K.idPhotoCheck, inputId: "iFront", title: "Photo of the FRONT of your license *" })}
-        <div class="cols"><div>${fld("legalName", "Full legal name *", K, 'autocapitalize="words"')}${fld("preferredName", "Preferred name", K, 'autocapitalize="words"')}
-          <label for="i_dob">Date of birth *</label><input id="i_dob" type="date" value="${esc(K.client.dob || "")}">
+        ${K.scan ? `<div class="banner ok" style="margin:12px 0">Details filled from your license, please check them.</div>` : ""}
+        <div class="cols"><div>${fld("legalName", "Full legal name *", K, K.scan ? "readonly" : 'autocapitalize="words"')}${fld("preferredName", "Preferred name", K, 'autocapitalize="words"')}
+          <label for="i_dob">Date of birth *</label><input id="i_dob" type="date" value="${esc(K.client.dob || "")}" ${K.scan ? "readonly" : ""}>
           ${age !== null ? `<div class="banner ${under ? "bad" : "ok"}">${under ? `You must be at least ${settings.minAge} to get a tattoo here. Please see the artist.` : `Age ${age}`}</div>` : ""}</div>
           <div>${phoneFld("phone", "Phone", K)}${fld("email", "Email * (your signed contract and aftercare instructions are emailed here)", K, 'type="email" inputmode="email" autocapitalize="off"')}<label for="i_address">Address</label><input id="i_address" value="${esc(K.client.address || "")}" autocapitalize="words">${addressSuggestion(K)}</div>
           <div>${fld("emergencyName", "Emergency contact name", K)}${phoneFld("emergencyPhone", "Emergency contact phone", K)}</div></div>
@@ -81,17 +79,12 @@ const Intake = (() => {
     },
     bind(root) {
       const K = Consent.K();
+      if (!K.frontPhoto) { go("iStaffId", {}, { replace: true }); return; }
       wirePhoneFields(root);
       const collect = () => { for (const k of dkeys) K.client[k] = $("#i_" + k, root).value.trim(); };
       const useAddress = $("#useScanAddress", root);
       if (useAddress) useAddress.onclick = () => { $("#i_address", root).value = K.scannedAddress; collect(); go("iInfo"); };
       $("#i_dob", root).onchange = () => { collect(); go("iInfo"); };
-      $("#iScanBtn", root).onclick = () => { collect(); go("iScan"); };
-      IdPhoto.attach(root, {
-        inputId: "iFront",
-        onPhoto: result => { K.frontPhoto = result.image; K.idPhotoCheck = result.check; go("iInfo"); },
-        onError: () => { $("#iErr", root).innerHTML = `<div class="banner bad">Could not read that photo. Please try again.</div>`; }
-      });
       $("#iNext", root).onclick = () => {
         collect();
         const c = K.client, age = ageOn(c.dob), m = [];
@@ -101,40 +94,10 @@ const Intake = (() => {
         if (!c.phone) m.push("Please give a phone number.");
         if (!c.email) m.push("Please give an email address: your signed contract is emailed to you.");
         m.push(...validatePhoneFields(root));
-        if (!K.frontPhoto) m.push("Please take a photo of the front of your license.");
         if (c.email && !/^\S+@\S+\.\S+$/.test(c.email)) m.push("That email address looks wrong.");
         if (m.length) { $("#iErr", root).innerHTML = `<div class="banner bad">${m.map(esc).join("<br>")}</div>`; return; }
         go(P.flash && P.flash.length ? "iFlash" : "kQuestions");
       };
-    }
-  };
-
-  screens.iScan = {
-    html: () => `${head()}<h2 style="margin:0 0 12px">Scan your driver's license</h2>
-      <div class="card" style="padding:0;overflow:hidden"><video id="cam" playsinline muted style="width:100%;display:block;background:#000;min-height:260px"></video></div>
-      <div id="scanMsg" class="banner warn">Hold the BACK of the license (the barcode) flat in view, close, in good light.</div>
-      <div class="actions"><label class="btn" style="display:inline-flex;align-items:center">Take a photo instead<input id="photo" type="file" accept="image/*" capture="environment" hidden></label>
-        <button class="ghost" id="iBack">Type it instead</button></div>`,
-    async bind(root) {
-      const K = Consent.K();
-      const msg = t => { const m = $("#scanMsg", root); if (m) m.textContent = t; };
-      const done = text => {
-        const r = AAMVA.parse(text);
-        if (!r) { msg("That was not a driver's license barcode. Try the back of the card."); return false; }
-        Object.assign(K.client, { legalName: r.legalName, dob: r.dob, licenseNumber: r.idNumber });
-        K.scannedAddress = r.address || "";
-        K.scan = { idNumber: r.idNumber, idState: r.idState, idExpiry: r.idExpiry, idExpired: r.idExpired,
-          scanned: { legalName: r.legalName, dob: r.dob } };
-        Scan.stop(); go("iInfo"); return true;
-      };
-      $("#iBack", root).onclick = () => { Scan.stop(); go("iInfo"); };
-      $("#photo", root).onchange = async e => {
-        const f = e.target.files[0]; if (!f) return; msg("Reading photo…");
-        try { const t = await Scan.decodeBlob(f); t ? done(t) : msg("No barcode found. Retake it closer, sharp, filling the frame."); } catch (err) { msg("Could not read photo: " + err.message); }
-      };
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { msg("Camera is not available. Use Take a photo, or type your details."); return; }
-      try { await Scan.start($("#cam", root), t => { done(t); }, msg); }
-      catch (err) { msg(err.name === "NotAllowedError" ? "Camera access is blocked. Allow it in the browser or iPad Settings, or use Take a photo." : "Camera or scanner could not start (" + (err.name || err.message) + "). Use Take a photo, or type your details."); }
     }
   };
 

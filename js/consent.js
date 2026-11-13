@@ -215,7 +215,7 @@ const Consent = (() => {
 
   function startIntake(P, returning) {
     if (!P || !P.template) return { error: "The check-in form is not ready. Please ask staff." };
-    K = { mode: "intake", client: {}, scan: null, scannedAddress: "", frontPhoto: null, flashId: null, flashName: "", returning: !!returning, tpl: P.template, relayConfigured: !!P.relayConfigured, answers: {}, contact: {}, privacyAt: null };
+    K = { mode: "intake", client: {}, scan: null, noScan: false, scannedAddress: "", frontPhoto: null, flashId: null, flashName: "", returning: !!returning, tpl: P.template, relayConfigured: !!P.relayConfigured, answers: {}, contact: {}, privacyAt: null };
     return {};
   }
   function wirePhoneFields(root, prefix) {
@@ -240,7 +240,7 @@ const Consent = (() => {
     html: () => `${kbar("Before you start")}
       <div class="card agree" style="max-height:none;font-size:22px"><p>${esc(privacyText())}</p></div>
       <label class="qrow check" style="border:0"><input type="checkbox" id="privOk"><span>I have read this privacy notice.</span></label>
-      <div class="actions"><button class="primary" id="kNext" disabled>Continue</button></div>`,
+      <div class="actions">${K.mode === "intake" ? `<button class="ghost" data-go="iWelcome">Back</button>` : ""}<button class="primary" id="kNext" disabled>Continue</button></div>`,
     bind(root) {
       const b = $("#kNext", root);
       $("#privOk", root).onchange = e => { b.disabled = !e.target.checked; };
