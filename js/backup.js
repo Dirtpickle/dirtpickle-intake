@@ -57,6 +57,22 @@ const Backup = (() => {
     return t.total + p.extra.inbox.length;
   }
 
+  async function merge(text, pin) {
+    if (!DB.isUnlocked()) throw new Error("Unlock the pro side before merging a backup.");
+    const p = await parse(text);
+    const decrypted = await DB.decryptBackup(p.auth, p.recs, pin);
+    if (!decrypted.pinOk) throw new Error("That PIN does not open this backup.");
+    const planned = BackupMerge.merge(DB.all(), decrypted.records);
+    let added = 0, updated = 0, skipped = planned.skip.length;
+    for (const record of planned.add) {
+      try { await DB.put(record); added++; } catch (_) { skipped++; }
+    }
+    for (const record of planned.update) {
+      try { await DB.put(record); updated++; } catch (_) { skipped++; }
+    }
+    return { added, updated, skipped, conflicts: planned.conflicts, unreadable: decrypted.unreadable };
+  }
+
   const days = iso => iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 86400000) : null;
   function overdue() {
     const hasData = DB.all("client").length > 0;
@@ -81,6 +97,7 @@ const Backup = (() => {
         ${pinInput("bkPin", "PIN used when the backup was made (needed to fully test or restore)")}
         <div class="actions"><button id="bkVerify">Check backup</button><button class="danger" id="bkRestore">Restore from backup</button></div>
         <div id="bkOut"></div></div>
+      ${BackupMergeUI.html()}
       <div class="card"><strong>Change PIN</strong>${pinInput("pinOld", "Current PIN")}${pinInput("pinNew", "New 6-digit PIN")}${pinInput("pinNew2", "New PIN again")}
         <div class="actions"><button id="pinChange">Change PIN</button></div><div id="pinMsg"></div></div>
       <div class="card"><label for="bkDays" style="margin-top:0">Remind me when a backup is older than (days)</label>
@@ -88,6 +105,7 @@ const Backup = (() => {
         <div class="actions"><button id="bkDaysSave">Save</button></div></div>`,
     bind(root) {
       const msg = (id, cls, t) => { $(id, root).innerHTML = t ? `<div class="banner ${cls}">${esc(t)}</div>` : ""; };
+      BackupMergeUI.bind(root);
       let fileText = null;
       $("#bkMake", root).onclick = async () => {
         try {
@@ -141,5 +159,5 @@ const Backup = (() => {
       };
     }
   };
-  return { create, verify, restore, overdue };
+  return { create, verify, restore, merge, overdue };
 })();

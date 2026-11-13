@@ -114,6 +114,17 @@ const DB = (() => {
       for (const r of recs) { try { await d(r); readable++; } catch (_) { /* counted as unreadable */ } }
       return { pinOk: true, readable, total: recs.length };
     },
+    async decryptBackup(auth, recs, pin) {
+      const k = await derive(pin, auth.salt);
+      const decrypt = r => crypto.subtle.decrypt({ name: "AES-GCM", iv: r.iv }, k, r.data);
+      try { await decrypt(auth.check); } catch (_) { return { pinOk: false, records: [], unreadable: 0, total: recs.length }; }
+      const records = []; let unreadable = 0;
+      for (const record of recs) {
+        try { records.push(JSON.parse(new TextDecoder().decode(await decrypt(record)))); }
+        catch (_) { unreadable++; }
+      }
+      return { pinOk: true, records, unreadable, total: recs.length };
+    },
     async importRaw(auth, recs, extra = {}) {
       await new Promise((res, rej) => {
         const t = idb.transaction(["meta", "records", "inbox"], "readwrite");
@@ -185,7 +196,7 @@ const DB = (() => {
     },
     async inboxRemove(id) { await run("inbox", "readwrite", s => s.delete(id)); },
     get(id) { return cache.get(id); },
-    all(type) { return [...cache.values()].filter(o => o.type === type); },
+    all(type) { return [...cache.values()].filter(o => type === undefined || o.type === type); },
     async remove(id, opts = {}) {
       if (!key) throw new Error("Locked");
       const o = cache.get(id);
