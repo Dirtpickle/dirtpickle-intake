@@ -17,7 +17,7 @@ const Mailer = (() => {
       method: "POST",
       headers: { "Content-Type": "text/plain" },
       body: JSON.stringify({ secret: relay.secret, to: addressFor(doc), subject: doc.type === "aftercare" ? MAILER_CONFIG.aftercareSubject : MAILER_CONFIG.subject,
-        body: doc.type === "aftercare" ? MAILER_CONFIG.aftercareBody : MAILER_CONFIG.body, filename: fileNameFor(doc), pdfBase64: doc.pdf })
+        body: doc.type === "aftercare" ? MAILER_CONFIG.aftercareBody : MAILER_CONFIG.body, filename: fileNameFor(doc), pdfBase64: doc.pdf, attachments: await MailerAttachments.forDoc(doc) })
     });
     let reply;
     try { reply = await response.json(); } catch (_) { throw new Error("Email relay returned an invalid response"); }

@@ -62,8 +62,9 @@ test("queues while offline and retries when online", async ({ page, context }) =
   await context.setOffline(false);
   await expect.poll(() => page.evaluate(() => navigator.onLine)).toBe(true);
   await page.evaluate(() => Mailer.retryAll());
-  expect(calls).toBeGreaterThanOrEqual(1);
-  expect(await page.evaluate(() => DB.get("email-doc").emailStatus)).toBe("sent");
+  /* The browser's own online-event retry may already be mid-flight (loading the attachment), so wait for it. */
+  await expect.poll(() => calls).toBeGreaterThanOrEqual(1);
+  await expect.poll(() => page.evaluate(() => DB.get("email-doc").emailStatus)).toBe("sent");
 });
 
 test("removes the email promise from no-relay client wording", async ({ page }) => {
@@ -96,4 +97,17 @@ test("patron copy choice: validates the address and only asks for a copy when ti
   expect(out.bad.error).toBeTruthy();
   expect(out.good).toEqual({ wants: true, to: "me@example.com" });
   expect(out.noRelay).toBe(false);
+});
+
+test("contract email carries the aftercare PDF; aftercare emails do not", async ({ page }) => {
+  await setup(page); await relaySettings(page); await document(page);
+  const bodies = [];
+  await page.route("https://relay.test/exec", async route => {
+    bodies.push(JSON.parse(route.request().postData()));
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) });
+  });
+  await page.evaluate(() => Mailer.send(DB.get("email-doc")));
+  expect(bodies[0].attachments.map(a => a.filename)).toEqual(["Tattoo-Aftercare.pdf"]);
+  expect(Buffer.from(bodies[0].attachments[0].pdfBase64, "base64").subarray(0, 5).toString()).toBe("%PDF-");
+  expect(await page.evaluate(() => MailerAttachments.forDoc({ type: "aftercare" }))).toEqual([]);
 });
