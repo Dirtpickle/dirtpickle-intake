@@ -77,26 +77,23 @@ test("removes the email promise from no-relay client wording", async ({ page }) 
   expect(text).toContain("Ask the artist for a copy.");
 });
 
-test("patron copy choice: validates the address and only asks for a copy when ticked", async ({ page }) => {
+test("the contract copy is always emailed: address is required and checked at the end", async ({ page }) => {
   await page.goto("/");
   const out = await page.evaluate(() => {
     const root = document.createElement("div");
-    root.innerHTML = ConsentCopy.html("", true);
+    root.innerHTML = ConsentCopy.html("me@example.com", true);
     document.body.appendChild(root);
-    ConsentCopy.bind(root);
-    const none = ConsentCopy.read(root);
-    root.querySelector("#copyWant").click();
-    const hiddenAfter = root.querySelector("#copyBox").hidden;
+    const good = ConsentCopy.read(root);
     root.querySelector("#copyTo").value = "bad";
     const bad = ConsentCopy.read(root);
-    root.querySelector("#copyTo").value = " me@example.com ";
-    return { none, hiddenAfter, bad, good: ConsentCopy.read(root), noRelay: ConsentCopy.html("a@b.co", false).includes("copyWant") };
+    root.querySelector("#copyTo").value = "";
+    return { good, bad, empty: ConsentCopy.read(root), noRelay: ConsentCopy.html("a@b.co", false).includes("copyTo"), noRelayRead: ConsentCopy.read(document.createElement("div")) };
   });
-  expect(out.none).toEqual({ wants: false, to: "" });
-  expect(out.hiddenAfter).toBe(false);
-  expect(out.bad.error).toBeTruthy();
   expect(out.good).toEqual({ wants: true, to: "me@example.com" });
+  expect(out.bad.error).toBeTruthy();
+  expect(out.empty.error).toBeTruthy();
   expect(out.noRelay).toBe(false);
+  expect(out.noRelayRead).toEqual({ wants: false, to: "" });
 });
 
 test("contract email carries the aftercare PDF; aftercare emails do not", async ({ page }) => {

@@ -2,11 +2,11 @@
 /* Consent forms, signature, PDF generation, client check-in (kiosk) mode, and the Documents list.
    Signed consent records are write-once: they hold a full snapshot of the wording the client saw. */
 const Consent = (() => {
-  const DEFAULT_PRIVACY = "Your privacy. This app works completely offline. Everything you enter, including your ID details and a photo of your ID, health answers and signature, is saved only on this device and is encrypted. It is not uploaded to any cloud or shared with anyone, and only the artist can open it. If you ask for a copy, your signed agreement will be emailed to the address you give us. That is the only information that leaves this device.";
+  const DEFAULT_PRIVACY = "Your privacy. This app works completely offline. Everything you enter, including your ID details and a photo of your ID, health answers and signature, is saved only on this device and is encrypted. It is not uploaded to any cloud or shared with anyone, and only the artist can open it. Your signed agreement and aftercare instructions will be emailed to the address you give us. That is the only information that leaves this device.";
   const privacyText = () => {
     const text = (K && K.tpl && K.tpl.privacy) || DEFAULT_PRIVACY;
     const relay = K && (K.mode === "intake" ? K.relayConfigured : Mailer.configured(Mailer.relayFromSettings()));
-    return relay ? text : text.replace("If you ask for a copy, your signed agreement will be emailed to the address you give us.", "Ask the artist for a copy.");
+    return relay ? text : text.replace("Your signed agreement and aftercare instructions will be emailed to the address you give us.", "Ask the artist for a copy.");
   };
 
   async function init() {
@@ -255,7 +255,7 @@ const Consent = (() => {
       return `${kbar("Welcome. Please check your information.")}
         <div class="card"><dl class="kv"><dt>Name</dt><dd>${esc(c.legalName)}</dd><dt>Date of birth</dt><dd>${esc(c.dob)}</dd></dl>
         <div class="mute" style="font-size:15px">If your name or birth date is wrong, please tell the artist.</div></div>
-        <div class="cols"><div>${phoneInput("k", "phone", "Phone", K.contact.phone)}${f("email", "Email (optional - for a copy of your signed contract)", 'type="email" inputmode="email" autocapitalize="off"')}</div>
+        <div class="cols"><div>${phoneInput("k", "phone", "Phone", K.contact.phone)}${f("email", "Email * (your signed contract and aftercare instructions are emailed here)", 'type="email" inputmode="email" autocapitalize="off"')}</div>
         <div>${f("address", "Address")}</div><div>${f("emergencyName", "Emergency contact name")}${phoneInput("k", "emergencyPhone", "Emergency contact phone", K.contact.emergencyPhone)}</div></div>
         <div id="kErr"></div><div class="actions"><button class="primary" id="kNext">Continue</button></div>`;
     },
@@ -264,6 +264,7 @@ const Consent = (() => {
       $("#kNext", root).onclick = () => {
         for (const k of Object.keys(K.contact)) K.contact[k] = $("#k_" + k, root).value.trim();
         const errors = validatePhoneFields(root, "k");
+        if (!/^\S+@\S+\.\S+$/.test(K.contact.email)) errors.push("An email address is required: your signed contract is emailed to you.");
         if (errors.length) { $("#kErr", root).innerHTML = `<div class="banner bad">${errors.map(esc).join("<br>")}</div>`; return; }
         go("kQuestions");
       };
@@ -381,6 +382,7 @@ const Consent = (() => {
         const copy = ConsentCopy.read(root);
         if (copy.error) { $("#kErr", root).innerHTML = `<div class="banner bad">${esc(copy.error)}</div>`; return; }
         K.copy = copy;
+        if (copy.to) { if (K.mode === "intake") K.client.email = copy.to; else K.contact.email = copy.to; }
         submit.disabled = true; submit.textContent = "Saving…";
         try { const docId = K.mode === "intake" ? await finishIntake(pad.data()) : await finish(pad.data()); go("kDone", { id: docId }); }
         catch (e) { $("#kErr", root).innerHTML = `<div class="banner bad">Could not save: ${esc(e.message)}. Please tell the artist.</div>`; submit.disabled = false; submit.textContent = "Agree and submit"; }

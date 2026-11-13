@@ -7,24 +7,20 @@ const ConsentCopy = (() => {
 
   function html(defaultEmail, relayOk) {
     if (!relayOk) return `<div class="banner warn" style="font-weight:400">Email is not set up on this device. Ask the artist for a copy.</div>`;
-    return `<div class="card"><label class="chk" style="display:flex;gap:10px;align-items:center;font-size:18px">
-        <input type="checkbox" id="copyWant" ${defaultEmail ? "checked" : ""} style="width:26px;height:26px"> Email me a copy of this signed contract</label>
-      <div id="copyBox" ${defaultEmail ? "" : 'hidden'}><label for="copyTo">My email address</label>
-        <input id="copyTo" type="email" inputmode="email" autocapitalize="off" autocomplete="email" value="${esc(defaultEmail || "")}">
-        <p class="mute" style="font-size:15px;margin:6px 0 0">It may land in junk or spam. Your address is used only to send this copy.</p></div></div>`;
+    return `<div class="card"><strong>Your copy</strong>
+      <p class="mute" style="font-size:16px;margin:6px 0 0">Your signed contract and aftercare instructions will be emailed to this address. Check it is right. It may land in junk or spam.</p>
+      <label for="copyTo">My email address</label>
+      <input id="copyTo" type="email" inputmode="email" autocapitalize="off" autocomplete="email" value="${esc(defaultEmail || "")}"></div>`;
   }
 
-  function bind(root) {
-    const want = $("#copyWant", root);
-    if (want) want.onchange = () => { $("#copyBox", root).hidden = !want.checked; };
-  }
+  function bind() { /* the copy is always sent; nothing to toggle */ }
 
-  /* -> { wants, to } or { error } when a copy is wanted but the address is missing/wrong. No block (no relay) means no copy. */
+  /* -> { wants, to } or { error } when the address is missing/wrong. No block (no relay) means no copy. */
   function read(root) {
-    const want = $("#copyWant", root);
-    if (!want || !want.checked) return { wants: false, to: "" };
-    const to = $("#copyTo", root).value.trim();
-    return validEmail(to) ? { wants: true, to } : { error: "Enter a valid email address, or untick the email box." };
+    const input = $("#copyTo", root);
+    if (!input) return { wants: false, to: "" };
+    const to = input.value.trim();
+    return validEmail(to) ? { wants: true, to } : { error: "Enter a valid email address: your signed contract is emailed to you." };
   }
 
   function notice(copy, relayOk) {

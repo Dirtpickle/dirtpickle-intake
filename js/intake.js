@@ -75,7 +75,7 @@ const Intake = (() => {
         <div class="cols"><div>${fld("legalName", "Full legal name *", K, 'autocapitalize="words"')}${fld("preferredName", "Preferred name", K, 'autocapitalize="words"')}
           <label for="i_dob">Date of birth *</label><input id="i_dob" type="date" value="${esc(K.client.dob || "")}">
           ${age !== null ? `<div class="banner ${under ? "bad" : "ok"}">${under ? `You must be at least ${settings.minAge} to get a tattoo here. Please see the artist.` : `Age ${age}`}</div>` : ""}</div>
-          <div>${phoneFld("phone", "Phone", K)}${fld("email", "Email (optional - for a copy of your signed contract)", K, 'type="email" inputmode="email" autocapitalize="off"')}<label for="i_address">Address</label><input id="i_address" value="${esc(K.client.address || "")}" autocapitalize="words">${addressSuggestion(K)}</div>
+          <div>${phoneFld("phone", "Phone", K)}${fld("email", "Email * (your signed contract and aftercare instructions are emailed here)", K, 'type="email" inputmode="email" autocapitalize="off"')}<label for="i_address">Address</label><input id="i_address" value="${esc(K.client.address || "")}" autocapitalize="words">${addressSuggestion(K)}</div>
           <div>${fld("emergencyName", "Emergency contact name", K)}${phoneFld("emergencyPhone", "Emergency contact phone", K)}</div></div>
         <div id="iErr"></div><div class="actions"><button class="ghost" data-go="kPrivacy">‹ Back</button><button class="primary" id="iNext" ${under ? "disabled" : ""}>Continue</button></div>`;
     },
@@ -98,7 +98,8 @@ const Intake = (() => {
         if (!c.legalName) m.push("Please enter your full legal name.");
         if (age === null || age > 125) m.push("Please enter a valid date of birth.");
         else if (age < settings.minAge) m.push(`You must be at least ${settings.minAge}.`);
-        if (!c.phone && !c.email) m.push("Please give a phone number or email.");
+        if (!c.phone) m.push("Please give a phone number.");
+        if (!c.email) m.push("Please give an email address: your signed contract is emailed to you.");
         m.push(...validatePhoneFields(root));
         if (!K.frontPhoto) m.push("Please take a photo of the front of your license.");
         if (c.email && !/^\S+@\S+\.\S+$/.test(c.email)) m.push("That email address looks wrong.");

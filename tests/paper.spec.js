@@ -20,11 +20,11 @@ test("paper contract is blank without consent and pre-fills the latest signed co
   expect(result.subject).toContain("Pre-filled");
 });
 
-test("intake and consent email labels explain the optional contract copy", async ({ page }) => {
+test("intake and consent email labels say the email is required for the contract copy", async ({ page }) => {
   await setup(page);
   await newClient(page, "Label Client");
   await page.locator("#startPaper").click();
   await page.locator("#privOk").check();
   await page.locator("#kNext").click();
-  await expect(page.getByText("Email (optional - for a copy of your signed contract)")).toHaveCount(1);
+  await expect(page.getByText("Email * (your signed contract and aftercare instructions are emailed here)")).toHaveCount(1);
 });
