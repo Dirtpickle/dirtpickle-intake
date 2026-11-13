@@ -475,7 +475,8 @@ screens.profile = {
       await deleteClient(id); go("clients");
     };
     $("#startPaper", root).onclick = () => {
-      const r = Consent.start(id);
+      const waiting = Sessions.openForPaperwork(id);
+      const r = Consent.start(id, waiting && waiting.id);
       if (r.error) { $("#paperErr", root).innerHTML = `<div class="banner bad">${esc(r.error)}</div>`; return; }
       go("kPrivacy");
     };

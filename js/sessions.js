@@ -21,6 +21,12 @@ const Sessions = (() => {
   const suggestion = s => s.status === "completed" && hourlyApplies(s) && s.durationMs >= 0
     ? Pricing.suggest(s.durationMs, (settings.pricing || {}).rate, { round: (settings.pricing || {}).round }) : null;
 
+  /* The client's queue entry that is still waiting for paperwork, so paperwork never makes a second entry. */
+  function openForPaperwork(clientId) {
+    return DB.all("session").filter(s => s.clientId === clientId && ["waiting", "paperwork"].includes(s.status) && !s.consentId)
+      .sort((a, b) => (a.createdAt || "").localeCompare(b.createdAt || "")).pop() || null;
+  }
+
   /* ----- flash availability ----- */
   async function createSession(clientId, flashId) {
     const f = flashId ? DB.get(flashId) : null;
@@ -164,5 +170,5 @@ const Sessions = (() => {
       <div class="sub">${esc(new Date(s.createdAt).toLocaleDateString())} · ${LABEL[s.status]}${s.eventId && DB.get(s.eventId) ? " · " + esc(DB.get(s.eventId).name) : ""}${s.tattoo && s.tattoo.location ? " · " + esc(s.tattoo.location) : ""}${s.price !== "" && s.price != null ? " · " + money(s.price) : ""}${s.durationMs ? " · " + fmt(s.durationMs) : ""}</div></div><div class="mute">›</div></div>`).join("")
       || '<span class="mute">No sessions yet.</span>';
   }
-  return { historyHtml, createSession, claim: id => Flash.claim(id, null) };
+  return { historyHtml, createSession, openForPaperwork, claim: id => Flash.claim(id, null) };
 })();
