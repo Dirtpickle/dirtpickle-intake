@@ -215,7 +215,7 @@ const Consent = (() => {
 
   function startIntake(P, returning) {
     if (!P || !P.template) return { error: "The check-in form is not ready. Please ask staff." };
-    K = { mode: "intake", client: {}, scan: null, noScan: false, scanOnly: false, hasFlash: !!(P.flash && P.flash.length), scannedAddress: "", frontPhoto: null, flashId: null, flashName: "", returning: !!returning, tpl: P.template, relayConfigured: !!P.relayConfigured, answers: {}, contact: {}, privacyAt: null };
+    K = { mode: "intake", client: {}, scan: null, noScan: false, scanOnly: false, hasFlash: !!(P.flash && P.flash.length), scannedAddress: "", frontPhoto: null, flashId: null, flashCode: "", flashName: "", returning: !!returning, tpl: P.template, relayConfigured: !!P.relayConfigured, answers: {}, contact: {}, privacyAt: null };
     return {};
   }
   function wirePhoneFields(root, prefix) {
@@ -398,7 +398,7 @@ const Consent = (() => {
       matched: K.scan.scanned ? IdMatch.compare(K.scan.scanned, c).matched : true,
       calculatedAge: ageAtSigning, minAge: settings.minAge, visuallyMatched: false, authenticityChecked: false } : null;
     const privacy = { text: privacyText(), at: K.privacyAt || now };
-    const session = { id: sessId, createdAt: now, flashId: K.flashId, flashName: K.flashName };
+    const session = { id: sessId, createdAt: now, flashId: K.flashId, flashCode: K.flashCode, flashName: K.flashName };
     const bytes = await buildPdf({ business: settings.business, minAge: settings.minAge, client: c, session, tpl: K.tpl, answers: K.answers,
       signature, signedAt: now, docId, ageAtSigning, idCheck, privacy, artist: settings.artistName });
     const sha256 = hex(await crypto.subtle.digest("SHA-256", bytes));

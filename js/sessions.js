@@ -32,7 +32,7 @@ const Sessions = (() => {
     const f = flashId ? DB.get(flashId) : null;
     const active = Events.getActive();
     const s = { type: "session", clientId, createdAt: new Date().toISOString(), status: "waiting", tattoo: {}, segments: [],
-      eventId: active ? active.id : null, flashId: f ? f.id : null, flashName: f ? f.name : "", price: f ? (f.price ?? ev().flashMin) : "", deposit: "", paid: "", payMethod: "", notes: "" };
+      eventId: active ? active.id : null, flashId: f ? f.id : null, flashCode: f ? f.code : "", flashName: f ? `${f.code}${f.name ? " - " + f.name : ""}` : "", price: f ? (f.price ?? ev().flashMin) : "", deposit: "", paid: "", payMethod: "", notes: "" };
     await DB.put(s); await Flash.claim(flashId, s.id);
     return s;
   }

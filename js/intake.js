@@ -103,18 +103,22 @@ const Intake = (() => {
 
   screens.iFlash = {
     html() {
-      const items = (P.flash || []).slice().sort((a, b) => (a.sheet || "").localeCompare(b.sheet || "") || a.name.localeCompare(b.name));
+      const items = (P.flash || []).slice().sort((a, b) => (a.code || "").localeCompare(b.code || ""));
       const m = n => n || n === 0 ? "$" + n : "";
-      return `${head()}<h2 style="margin:0 0 12px">Pick a flash design (optional)</h2>
+      return `${head()}<h2 style="margin:0 0 12px">Pick a flash design (optional)</h2><label for="i_flashCode">Type the code of your flash design</label><input id="i_flashCode" autocapitalize="characters" autocomplete="off"><div id="iFlashMsg" class="sub"></div>
         <div class="actions" style="margin:0 0 16px"><button class="primary" data-pick="">I haven't chosen yet</button><button class="ghost" data-go="iInfo">‹ Back</button></div>
-        <div class="fgrid">${items.map(f => `<div class="fitem" data-pick="${esc(f.id)}"><img src="${f.image}" alt=""><div>${esc(f.name)}</div><div class="sub">${m(f.price)}</div></div>`).join("")}</div>`;
+        <div class="fgrid">${items.map(f => `<div class="fitem" data-pick="${esc(f.code)}"><strong>${esc(f.code)}</strong><div>${esc(f.name || "")}</div><div class="sub">${m(f.price)}</div></div>`).join("")}</div><button class="primary" id="iFlashNext">Continue</button>`;
     },
     bind(root) {
       const K = Consent.K();
+      const input = $("#i_flashCode", root), msg = $("#iFlashMsg", root);
+      const money = n => n || n === 0 ? "$" + n : "";
+      input.oninput = () => { input.value = input.value.toUpperCase(); const f = FlashCode.find(P.flash || [], input.value); msg.textContent = f ? `Found: ${f.code} ${f.name || ""} ${money(f.price)}` : input.value.trim() ? "That code isn't on the list. Check the sheet, or continue and the artist will sort it out." : ""; };
+      $("#iFlashNext", root).onclick = () => { const f = FlashCode.find(P.flash || [], input.value); K.flashId = f ? f.id : null; K.flashCode = input.value.trim() ? FlashCode.normalize(input.value) : ""; K.flashName = f ? (f.code + (f.name ? " - " + f.name : "")) : K.flashCode; go("kQuestions"); };
       root.onclick = e => {
         const t = e.target.closest("[data-pick]"); if (!t) return;
-        const f = (P.flash || []).find(x => x.id === t.dataset.pick);
-        K.flashId = f ? f.id : null; K.flashName = f ? f.name : "";
+        const f = FlashCode.find(P.flash || [], t.dataset.pick);
+        K.flashId = f ? f.id : null; K.flashCode = f ? f.code : ""; K.flashName = f ? (f.code + (f.name ? " - " + f.name : "")) : "";
         go("kQuestions");
       };
     }
@@ -123,7 +127,7 @@ const Intake = (() => {
   /* ----- pro side: open the inbox and import it (runs after the PIN) ----- */
   async function importAll() {
     const { items, failed } = await DB.inboxOpen();
-    let added = 0, merged = 0, unmatchedReturning = 0, already = 0, unmatchedFlash = 0;
+    let added = 0, merged = 0, unmatchedReturning = 0, already = 0, unmatchedFlash = 0, unknownFlash = 0;
     items.sort((x, y) => x.createdAt.localeCompare(y.createdAt)); // oldest check-in first
     for (const it of items) {
       try {
@@ -141,11 +145,12 @@ const Intake = (() => {
         if (p.idCheck) c.idChecks = [...(c.idChecks || []), p.idCheck];
         if (p.idPhoto) c.idPhotos = [...(c.idPhotos || []), { at: p.submittedAt, image: p.idPhoto }].slice(-3);
         await DB.put(c);
-        const f = p.session.flashId && DB.get(p.session.flashId);
+        const f = p.session.flashId ? DB.get(p.session.flashId) : FlashCode.find(Flash.list(), p.session.flashCode);
+        if (!p.session.flashId && p.session.flashCode && !f) unknownFlash++;
         const conflict = !!(f && f.status !== "available");
         if (conflict) unmatchedFlash++;
         const sess = { type: "session", id: p.session.id, clientId: c.id, createdAt: p.submittedAt, status: "ready", tattoo: {}, segments: [],
-          flashId: f ? f.id : null, flashName: f ? f.name : (p.session.flashName || ""), price: f ? (f.price ?? "") : "", deposit: "", paid: "", payMethod: "", notes: "",
+          flashId: f ? f.id : null, flashCode: f ? f.code : (p.session.flashCode || ""), flashName: f ? `${f.code}${f.name ? " - " + f.name : ""}` : (p.session.flashCode || p.session.flashName || ""), price: f ? (f.price ?? "") : "", deposit: "", paid: "", payMethod: "", notes: "",
           consentId: p.consent.id, flashConflict: conflict, source: "intake" };
         try { await DB.put(sess); } catch (_) { /* already imported */ }
         if (f && !conflict) await Sessions.claim(f.id);
@@ -164,6 +169,7 @@ const Intake = (() => {
     const parts = [];
     if (added) parts.push(`${added} new check-in${added === 1 ? "" : "s"} imported${merged ? ` (${merged} matched an existing client)` : ""}`);
     if (unmatchedFlash) parts.push(`${unmatchedFlash} picked a design that was already taken`);
+    if (unknownFlash) parts.push(unknownFlash + " flash code(s) were not on the list");
     if (unmatchedReturning) parts.push(`${unmatchedReturning} returning client(s) were not found; phone and email are missing`);
     if (failed) parts.push(`${failed} could not be opened`);
     notice = parts.join(". ");

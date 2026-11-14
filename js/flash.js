@@ -10,6 +10,7 @@ const Flash = (() => {
     const status = STATUSES.includes(oldStatus) ? oldStatus : "available";
     return {
       ...input,
+      code: input.code ? FlashCode.normalize(input.code) : String(input.name || "").toUpperCase().replace(/[^A-Z0-9]/g, ""),
       kind: KINDS.includes(input.kind) ? input.kind : "one-off",
       status,
       price: input.price ?? "",
@@ -21,14 +22,22 @@ const Flash = (() => {
   }
 
   function changed(a, b) {
-    return a.kind !== b.kind || a.status !== b.status || a.sheet !== b.sheet ||
+    return a.code !== b.code || a.image !== undefined || a.kind !== b.kind || a.status !== b.status || a.sheet !== b.sheet ||
       JSON.stringify(a.purchase) !== JSON.stringify(b.purchase);
   }
 
   async function migrateAll() {
+    const used = new Set();
     for (const old of DB.all("flash")) {
       const next = normalize(old);
-      if (changed(old, next)) await DB.put(next);
+      const base = next.code || "FLASH";
+      let code = base, n = 2;
+      while (used.has(code)) code = `${base}-${n++}`;
+      next.code = code; used.add(code);
+      if (changed(old, next)) {
+        delete next.image;
+        await DB.put(next);
+      }
     }
   }
 

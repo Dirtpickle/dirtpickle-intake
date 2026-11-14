@@ -1,80 +1,20 @@
 "use strict";
 
-/* Flash gallery, import, edit, and pick screens. Rules live in flash.js. */
+/* Text-only flash gallery, editor, range builder, and walk-in picker. */
 const FlashUI = (() => {
   let sheetFilter = "", kindFilter = "";
   const money = n => (n || n === 0) && n !== "" ? "$" + Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 }) : "";
+  const items = () => Flash.list().filter(f => (!sheetFilter || f.sheet === sheetFilter) && (!kindFilter || f.kind === kindFilter));
+  const card = f => `<div class="fitem ${f.status !== "available" ? "dim" : ""}" data-go="flashEdit" data-id="${esc(f.id)}"><strong class="flash-code">${esc(f.code)}</strong><div>${esc(f.name || "")}${f.kind === "one-off" ? ' <span class="badge">ONE-OFF</span>' : ""}</div><div class="sub">${money(f.price)}${f.minutes ? " · " + f.minutes + " min" : ""} · ${esc(f.status)}</div></div>`;
+  const field = (key, label, value, attrs = "") => `<label for="f_${key}">${label}</label><input id="f_${key}" value="${esc(value)}" ${attrs}>`;
+  const unique = (code, id) => !FlashCode.find(Flash.list().filter(f => f.id !== id), code);
+  const error = (root, message) => { $("#fErr", root).innerHTML = `<div class="banner bad">${esc(message)}</div>`; };
+  const save = (root, id) => { $("#fSave", root).onclick = async () => { const v = k => $("#f_" + k, root).value.trim(), code = FlashCode.normalize(v("code")); if (!code) return error(root, "Code is required."); if (!unique(code, id)) return error(root, "That code already exists."); await DB.put({ ...(id ? Flash.get(id) : { type: "flash", status: "available", purchase: null }), code, name: v("name"), sheet: v("sheet") || "Unsorted", price: v("price"), minutes: v("minutes"), sku: v("sku"), notes: v("notes"), kind: $("#f_kind", root).value, ...(id ? { status: $("#f_status", root).value } : {}) }); go("flash"); }; };
+  const form = (title, back, f = {}) => `${bar(title, { back })}<div class="card">${field("code", "Code *", f.code || "", 'autocapitalize="characters"')}${field("name", "Name / description", f.name || "")}${field("sheet", "Sheet / collection", f.sheet || sheetFilter || "Unsorted")}${field("price", "Price", f.price || "", 'inputmode="decimal"')}${field("minutes", "Approx. minutes", f.minutes || "", 'inputmode="numeric"')}${field("sku", "SKU (for web shop later)", f.sku || "")}<label for="f_kind">Kind</label><select id="f_kind">${Flash.KINDS.map(k => `<option ${k === (f.kind || "repeatable") ? "selected" : ""}>${k}</option>`).join("")}</select>${f.id ? `<label for="f_status">Status</label><select id="f_status">${Flash.STATUSES.map(k => `<option ${k === f.status ? "selected" : ""}>${k}</option>`).join("")}</select>${field("notes", "Notes", f.notes || "")}` : ""}<div id="fErr"></div><button class="primary" id="fSave">${f.id ? "Save" : "Add flash"}</button></div>`;
 
-  function resize(file, max = 1000) {
-    return new Promise((res, rej) => {
-      const img = new Image(), url = URL.createObjectURL(file);
-      img.onload = () => {
-        const k = Math.min(1, max / Math.max(img.width, img.height)), c = document.createElement("canvas");
-        c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
-        const x = c.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, c.width, c.height); x.drawImage(img, 0, 0, c.width, c.height);
-        URL.revokeObjectURL(url); res(c.toDataURL("image/jpeg", 0.85));
-      };
-      img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("Could not read " + file.name)); };
-      img.src = url;
-    });
-  }
-
-  function filtered() {
-    return Flash.list().filter(f => (!sheetFilter || (f.sheet || "Unsorted") === sheetFilter) && (!kindFilter || f.kind === kindFilter));
-  }
-
-  screens.flash = {
-    html() {
-      const all = Flash.list(), sheets = [...new Set(all.map(f => f.sheet || "Unsorted"))].sort(), items = filtered().sort((a, b) => a.name.localeCompare(b.name));
-      const available = all.filter(f => f.status === "available").length, sold = all.filter(f => f.status === "sold").length;
-      const chip = (value, label) => `<button class="small ${kindFilter === value ? "primary" : ""}" data-kind="${value}">${label}</button>`;
-      return `${bar("Flash", { back: "home" })}
-        <div class="actions" style="margin:0 0 12px"><label class="btn primary" style="display:inline-flex;align-items:center;background:var(--pink);color:#000;border-color:var(--pink)">+ Import flash images<input id="fImport" type="file" accept="image/*" multiple hidden></label><button class="ghost" data-go="queue">Queue</button></div>
-        <div class="chips">${chip("", `All (${all.length})`)}${chip("repeatable", "Repeatable")}${chip("one-off", "One-off")}</div>
-        <div class="chips"><button class="small ${sheetFilter ? "" : "primary"}" data-sheet="">All sheets</button>${sheets.map(sh => `<button class="small ${sheetFilter === sh ? "primary" : ""}" data-sheet="${esc(sh)}">${esc(sh)}</button>`).join("")}</div>
-        <div class="stats"><div class="stat"><b>${available}</b><span>available</span></div><div class="stat"><b>${sold}</b><span>sold</span></div></div><div id="fMsg"></div>
-        <div class="fgrid">${items.map(f => `<div class="fitem ${f.status !== "available" ? "dim" : ""}" data-go="flashEdit" data-id="${esc(f.id)}"><img src="${f.image}" alt=""><div>${esc(f.name)}${f.kind === "one-off" ? ' <span class="badge">ONE-OFF</span>' : ""}</div><div class="sub">${money(f.price)}${f.minutes ? " · " + f.minutes + " min" : ""} · ${esc(f.status)}</div></div>`).join("")}</div>
-        ${all.length ? "" : '<div class="card mute">No flash yet. Import images of your designs; each becomes an item with a price and time you can edit.</div>'}`;
-    },
-    bind(root) {
-      root.onclick = e => {
-        const kind = e.target.closest("[data-kind]"), sheet = e.target.closest("[data-sheet]");
-        if (kind) { kindFilter = kind.dataset.kind; go("flash"); }
-        if (sheet) { sheetFilter = sheet.dataset.sheet; go("flash"); }
-      };
-      $("#fImport", root).onchange = async e => {
-        const files = [...e.target.files]; if (!files.length) return;
-        const sheet = sheetFilter || prompt("Which sheet or collection are these on? (e.g. Sheet 1)", "Sheet 1") || "Unsorted";
-        const answer = prompt("Kind for this batch: repeatable or one-off", "repeatable");
-        const kind = answer === "one-off" ? "one-off" : "repeatable";
-        for (let i = 0; i < files.length; i++) {
-          $("#fMsg", root).innerHTML = `<div class="banner warn">Importing ${i + 1} of ${files.length}…</div>`;
-          try { await DB.put({ type: "flash", name: files[i].name.replace(/\.[^.]+$/, ""), sheet, kind, price: Events.pricing().flashMin, minutes: 60, status: "available", purchase: null, notes: "", image: await resize(files[i]) }); } catch (_) {}
-        }
-        go("flash");
-      };
-    }
-  };
-
-  screens.flashEdit = {
-    html({ id }) {
-      const f = Flash.get(id); if (!f) return `${bar("Flash", { back: "flash" })}<div class="banner bad">Not found.</div>`;
-      const fld = (k, l, v, a = "") => `<label for="f_${k}">${l}</label><input id="f_${k}" value="${esc(v)}" ${a}>`;
-      return `${bar(esc(f.name), { back: "flash" })}<div class="cols"><div><img src="${f.image}" style="width:100%;border-radius:14px;background:#fff" alt=""></div><div>${fld("name", "Name or number", f.name)}${fld("sheet", "Sheet / collection", f.sheet)}${fld("price", "Price", f.price, 'inputmode="decimal"')}${fld("minutes", "Approx. minutes", f.minutes, 'inputmode="numeric"')}${fld("sku", "SKU (for web shop later)", f.sku || "")}
-        <label for="f_kind">Kind</label><select id="f_kind">${Flash.KINDS.map(o => `<option ${o === f.kind ? "selected" : ""}>${o}</option>`).join("")}</select><label for="f_status">Status</label><select id="f_status">${Flash.STATUSES.map(o => `<option ${o === f.status ? "selected" : ""}>${o}</option>`).join("")}</select>${fld("notes", "Notes", f.notes || "")}</div></div><div class="actions"><button class="primary" id="fSave">Save</button><button class="danger" id="fDel">Delete</button></div>`;
-    },
-    bind(root, { id }) {
-      const v = k => $("#f_" + k, root).value.trim();
-      $("#fSave", root).onclick = async () => { await DB.put({ ...Flash.get(id), name: v("name") || "Untitled", sheet: v("sheet") || "Unsorted", price: v("price"), minutes: v("minutes"), sku: v("sku"), kind: $("#f_kind", root).value, status: $("#f_status", root).value, notes: v("notes") }); go("flash"); };
-      let armed = false; $("#fDel", root).onclick = async e => { if (!armed) { armed = true; e.target.textContent = "Tap again to delete"; return; } await DB.remove(id); go("flash"); };
-    }
-  };
-
-  screens.flashPick = {
-    html({ id }) {
-      const items = Flash.list().filter(f => Flash.available(f)).sort((a, b) => (a.sheet || "").localeCompare(b.sheet || "") || a.name.localeCompare(b.name));
-      return `${bar("Pick a flash design for " + esc((DB.get(id) || {}).legalName || "Unknown"), { back: "queue" })}<div class="actions" style="margin:0 0 16px"><button data-pickflash="" class="primary">No flash / custom design</button></div><div class="fgrid">${items.map(f => `<div class="fitem" data-pickflash="${esc(f.id)}"><img src="${f.image}" alt=""><div>${esc(f.name)}${f.kind === "one-off" ? ' <span class="badge">ONE-OFF</span>' : ""}</div><div class="sub">${money(f.price)}${f.minutes ? " · " + f.minutes + " min" : ""}</div></div>`).join("")}</div>${items.length ? "" : '<div class="card mute">No available flash yet. Add designs in the Flash gallery.</div>'}`;
-    },
-    bind(root, { id }) { root.onclick = async e => { const t = e.target.closest("[data-pickflash]"); if (t) { await Sessions.createSession(id, t.dataset.pickflash || null); go("queue"); } }; }
-  };
+  screens.flash = { html() { const all = Flash.list(), sheets = [...new Set(all.map(f => f.sheet || "Unsorted"))].sort(), chip = (v, l) => `<button class="small ${kindFilter === v ? "primary" : ""}" data-kind="${v}">${l}</button>`; return `${bar("Flash", { back: "home" })}<div class="actions"><button class="primary" data-go="flashAdd">+ Add flash</button><button data-go="flashRange">Add a range</button><button class="ghost" data-go="queue">Queue</button></div><div class="chips">${chip("", `All (${all.length})`)}${chip("repeatable", "Repeatable")}${chip("one-off", "One-off")}</div><div class="chips"><button class="small ${sheetFilter ? "" : "primary"}" data-sheet="">All sheets</button>${sheets.map(s => `<button class="small ${sheetFilter === s ? "primary" : ""}" data-sheet="${esc(s)}">${esc(s)}</button>`).join("")}</div><div class="fgrid">${items().sort((a, b) => a.code.localeCompare(b.code)).map(card).join("")}</div>${all.length ? "" : '<div class="card mute">No flash yet. Add a code from your flash sheet.</div>'}`; }, bind(root) { root.onclick = e => { const k = e.target.closest("[data-kind]"), s = e.target.closest("[data-sheet]"); if (k) { kindFilter = k.dataset.kind; go("flash"); } if (s) { sheetFilter = s.dataset.sheet; go("flash"); } }; } };
+  screens.flashAdd = { html: () => form("Add flash", "flash"), bind: root => save(root, null) };
+  screens.flashEdit = { html({ id }) { const f = Flash.get(id); return f ? form(esc(f.code), "flash", f).replace('<button class="primary" id="fSave">Save</button>', '<div class="actions"><button class="primary" id="fSave">Save</button><button class="danger" id="fDel">Delete</button></div>') : `${bar("Flash", { back: "flash" })}<div class="banner bad">Not found.</div>`; }, bind(root, { id }) { save(root, id); let armed = false; $("#fDel", root).onclick = async e => { if (!armed) { armed = true; e.target.textContent = "Tap again to delete"; return; } await DB.remove(id); go("flash"); }; } };
+  screens.flashRange = { html: () => `${bar("Add a range", { back: "flash" })}<div class="card"><p class="mute">Creates codes like 1BF26, 2BF26, 3BF26.</p>${field("suffix", "Suffix", "BF26")}${field("from", "From", "1", 'inputmode="numeric"')}${field("to", "To", "40", 'inputmode="numeric"')}${field("price", "Price", "", 'inputmode="decimal"')}${field("minutes", "Approx. minutes", "", 'inputmode="numeric"')}<label for="f_kind">Kind</label><select id="f_kind">${Flash.KINDS.map(k => `<option>${k}</option>`).join("")}</select><button class="primary" id="fSave">Add range</button></div>`, bind(root) { $("#fSave", root).onclick = async () => { const v = k => $("#f_" + k, root).value.trim(), from = Number(v("from")), to = Number(v("to")); if (!Number.isInteger(from) || !Number.isInteger(to) || from > to) return; for (let n = from; n <= to; n++) { const code = FlashCode.normalize(`${n}${v("suffix")}`); if (!unique(code)) continue; await DB.put({ type: "flash", code, name: "", sheet: "Unsorted", kind: $("#f_kind", root).value, price: v("price"), minutes: v("minutes"), status: "available", purchase: null }); } go("flash"); }; } };
+  screens.flashPick = { html({ id }) { const fs = Flash.list().filter(Flash.available).sort((a, b) => a.code.localeCompare(b.code)); return `${bar("Pick a flash design", { back: "queue" })}<div class="actions"><button data-pickflash="" class="primary">No flash / custom design</button></div><div class="fgrid">${fs.map(f => `<div class="fitem" data-pickflash="${esc(f.id)}"><strong class="flash-code">${esc(f.code)}</strong><div>${esc(f.name || "")}</div><div class="sub">${money(f.price)}</div></div>`).join("")}</div>`; }, bind(root, { id }) { root.onclick = async e => { const t = e.target.closest("[data-pickflash]"); if (t) { await Sessions.createSession(id, t.dataset.pickflash || null); go("queue"); } }; } };
 })();

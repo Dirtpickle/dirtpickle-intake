@@ -1,19 +1,14 @@
-const fs = require('fs');
-const path = require('path');
 const { test, expect } = require('@playwright/test');
 const { setup } = require('./helpers/app');
-
-const folder = path.resolve(__dirname, '..', 'test-flash');
-const images = fs.existsSync(folder) ? fs.readdirSync(folder).filter(name => /\.(png|jpe?g|webp)$/i.test(name)) : [];
-
-test('imports every test flash image', async ({ page }) => {
-  test.skip(!images.length, 'test-flash folder is missing or empty');
+test('adds a range of text-only flash codes', async ({ page }) => {
   await setup(page);
   await page.locator('[data-go="flash"]').click();
-  page.on('dialog', async dialog => dialog.accept(dialog.message().startsWith('Kind') ? 'repeatable' : 'Sheet 1'));
-  const started = Date.now();
-  await page.locator('#fImport').setInputFiles(images.map(name => path.join(folder, name)));
-  await expect(page.locator('.fitem')).toHaveCount(images.length);
-  const elapsed = Date.now() - started;
-  console.log(`Imported ${images.length} flash images in ${elapsed} ms`);
+  await page.locator('[data-go="flashRange"]').click();
+  await page.locator('#f_from').fill('1');
+  await page.locator('#f_to').fill('5');
+  await page.locator('#f_suffix').fill('BF26');
+  await page.locator('#fSave').click();
+  await expect(page.locator('.fitem')).toHaveCount(5);
+  await expect(page.locator('.fitem').first()).toContainText('1BF26');
+  await expect(page.locator('img')).toHaveCount(0);
 });
