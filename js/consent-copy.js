@@ -5,8 +5,9 @@
 const ConsentCopy = (() => {
   const validEmail = value => /^\S+@\S+\.\S+$/.test(value);
 
-  function html(defaultEmail, relayOk) {
+  function html(defaultEmail, relayOk, options = {}) {
     if (!relayOk) return `<div class="banner warn" style="font-weight:400">Email is not set up on this device. Ask the artist for a copy.</div>`;
+    if (options.onFile) return `<div class="card" data-copy-on-file="1"><strong>Your copy</strong><p class="mute" style="font-size:16px;margin:6px 0 0">A copy will be emailed to the address we have on file.</p></div>`;
     return `<div class="card"><strong>Your copy</strong>
       <p class="mute" style="font-size:16px;margin:6px 0 0">Your signed contract and aftercare instructions will be emailed to this address. Check it is right. It may land in junk or spam.</p>
       <label for="copyTo">My email address</label>
@@ -18,12 +19,13 @@ const ConsentCopy = (() => {
   /* -> { wants, to } or { error } when the address is missing/wrong. No block (no relay) means no copy. */
   function read(root) {
     const input = $("#copyTo", root);
-    if (!input) return { wants: false, to: "" };
+    if (!input) return root.querySelector("[data-copy-on-file]") ? { wants: true, to: "", onFile: true } : { wants: false, to: "" };
     const to = input.value.trim();
     return validEmail(to) ? { wants: true, to } : { error: "Enter a valid email address: your signed contract is emailed to you." };
   }
 
   function notice(copy, relayOk) {
+    if (copy && copy.onFile) return `<div class="banner ok" style="font-weight:400">A copy of this signed agreement will be emailed to the address we have on file.</div>`;
     if (copy && copy.wants) return `<div class="banner ok" style="font-weight:400">A copy of this signed agreement will be emailed to <b>${esc(copy.to)}</b>. If you do not see it soon, please check your junk or spam folder.</div>`;
     return `<div class="banner warn" style="font-weight:400">${relayOk ? "No copy will be emailed." : "Ask the artist for a copy."} Please ask the artist if you would like a copy.</div>`;
   }

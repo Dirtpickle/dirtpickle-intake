@@ -16,7 +16,7 @@ Keep replies short.
 db.js store/crypto/backup-import | app.js boot/router/PIN/home/client/settings | consent.js contract UI, signature, PDFs, kiosk
 contract.js contract template data | intake.js intake side + inbox import | sessions.js queue/flash/session/timer
 appointments.js appointment data/rules | appointments-ui.js appointment screens | calendar-sync.js relay queue | calendar-settings.js settings
-intake-staff.js intake staff license screens/scanner
+intake-staff.js intake staff license screens/scanner | client-match.js returning import matching | client-contact.js missing-contact status
 backup.js | formeditor.js | aamva.js license barcode parser | scan.js camera/photo scan | sw.js service worker
 vendor/ = pdf-lib, zxing-wasm (do not edit). email-test/ = scratch, ignore.
 

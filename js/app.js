@@ -356,9 +356,10 @@ screens.clientForm = {
       if (newIdPhoto) rec.idPhotos = [...(rec.idPhotos || []), { at: now, image: newIdPhoto.image }].slice(-3);
       const override = IdVerifyUI.overrideEntry(overrideReason);
       if (override) rec.idChecks = [...(rec.idChecks || []), override];
-      await DB.put(rec);
+      const saved = ClientContact.clearIfProvided(rec, data);
+      await DB.put(saved);
       pendingScan = null;
-      go("profile", { id: rec.id });
+      go("profile", { id: saved.id });
     };
     save.onclick = async () => {
       const d = gather();
@@ -416,7 +417,7 @@ screens.profile = {
     const row = (k, v) => v ? `<dt>${k}</dt><dd>${esc(v)}</dd>` : "";
     const visits = (c.visits || []).slice().reverse().map(v => `<div class="sub">${esc(fmtDate(v))}</div>`).join("");
     return `${bar(esc(nameOf(c)), { back: "clients" })}
-      ${a !== null && a < settings.minAge ? `<div class="banner bad">Under the minimum age of ${settings.minAge}.</div>` : ""}
+      ${a !== null && a < settings.minAge ? `<div class="banner bad">Under the minimum age of ${settings.minAge}.</div>` : ""}${ClientContact.warning(c)}
       <div class="card"><dl class="kv">
         ${row("Legal name", c.legalName)}${row("Preferred name", c.preferredName)}
         ${row("Date of birth", c.dob ? `${c.dob} (age ${a})` : "")}${row("Phone", c.phone)}${row("Email", c.email)}

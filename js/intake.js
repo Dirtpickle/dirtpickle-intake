@@ -123,18 +123,20 @@ const Intake = (() => {
   /* ----- pro side: open the inbox and import it (runs after the PIN) ----- */
   async function importAll() {
     const { items, failed } = await DB.inboxOpen();
-    let added = 0, merged = 0, already = 0, unmatchedFlash = 0;
+    let added = 0, merged = 0, unmatchedReturning = 0, already = 0, unmatchedFlash = 0;
     items.sort((x, y) => x.createdAt.localeCompare(y.createdAt)); // oldest check-in first
     for (const it of items) {
       try {
         const p = it.payload, d = p.client, now = new Date().toISOString();
-        let c = findDuplicate(d, null);
+        const scanOnly = !!p.scanOnly;
+        let c = scanOnly ? ClientMatch.returning(d) : findDuplicate(d, null);
+        if (scanOnly && !c) unmatchedReturning++;
         if (c) {
           merged++;
           c = { ...c, phone: d.phone || c.phone, email: d.email || c.email, address: d.address || c.address, preferredName: d.preferredName || c.preferredName,
             emergencyName: d.emergencyName || c.emergencyName, emergencyPhone: d.emergencyPhone || c.emergencyPhone,
             visits: [...(c.visits || []), p.submittedAt], updatedAt: now };
-        } else c = { type: "client", ...d, notes: "", visits: [p.submittedAt], createdAt: p.submittedAt, updatedAt: now };
+        } else c = { type: "client", ...d, ...(scanOnly ? { needsContact: true } : {}), notes: "", visits: [p.submittedAt], createdAt: p.submittedAt, updatedAt: now };
         if (p.client.licenseNumber) c.licenseNumber = p.client.licenseNumber;
         if (p.idCheck) c.idChecks = [...(c.idChecks || []), p.idCheck];
         if (p.idPhoto) c.idPhotos = [...(c.idPhotos || []), { at: p.submittedAt, image: p.idPhoto }].slice(-3);
@@ -152,7 +154,8 @@ const Intake = (() => {
           await DB.put({ type: "consent", id: k.id, locked: true, clientId: c.id, sessionId: p.session.id, signedAt: k.signedAt,
             clientSnapshot: { id: c.id, legalName: c.legalName, dob: c.dob, phone: c.phone, email: c.email, address: c.address },
             template: k.template, answers: k.answers, signature: k.signature, idCheck: k.idCheck, ageAtSigning: k.ageAtSigning, privacy: k.privacy,
-            pdf: k.pdf, sha256: k.sha256, copyTo: k.copyTo || "", emailStatus: k.copyTo && Mailer.configured(Mailer.relayFromSettings()) ? "queued" : "not-sent" });
+            pdf: k.pdf, sha256: k.sha256, copyTo: k.copyTo || "", copyToOnFile: !!k.copyToOnFile,
+            emailStatus: (k.copyToOnFile ? c.email : k.copyTo) && Mailer.configured(Mailer.relayFromSettings()) ? "queued" : "not-sent" });
           added++;
         } catch (e) { if (/locked/.test(e.message)) already++; else throw e; }
         await DB.inboxRemove(it.id);
@@ -161,6 +164,7 @@ const Intake = (() => {
     const parts = [];
     if (added) parts.push(`${added} new check-in${added === 1 ? "" : "s"} imported${merged ? ` (${merged} matched an existing client)` : ""}`);
     if (unmatchedFlash) parts.push(`${unmatchedFlash} picked a design that was already taken`);
+    if (unmatchedReturning) parts.push(`${unmatchedReturning} returning client(s) were not found; phone and email are missing`);
     if (failed) parts.push(`${failed} could not be opened`);
     notice = parts.join(". ");
     return { added, merged, failed };

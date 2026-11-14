@@ -64,9 +64,9 @@ const Consent = (() => {
 
     heading("Client");
     const c = d.client;
-    const kv = (k, v) => { if (v) text(`${k}: ${v}`); };
+    const kv = (k, v, showBlank = false) => { if (v || showBlank) text(`${k}: ${v || ""}`); };
     kv("Legal name", c.legalName); kv("Preferred name", c.preferredName); kv("Date of birth", c.dob ? `${c.dob} (age ${d.ageAtSigning} at signing)` : "");
-    kv("Phone", c.phone); kv("Email", c.email); kv("Address", c.address);
+    kv("Phone", c.phone, true); kv("Email", c.email, true); kv("Address", c.address, true);
     kv("Emergency contact", [c.emergencyName, c.emergencyPhone].filter(Boolean).join(", "));
     kv("Client ID", c.id);
 
@@ -215,7 +215,7 @@ const Consent = (() => {
 
   function startIntake(P, returning) {
     if (!P || !P.template) return { error: "The check-in form is not ready. Please ask staff." };
-    K = { mode: "intake", client: {}, scan: null, noScan: false, scannedAddress: "", frontPhoto: null, flashId: null, flashName: "", returning: !!returning, tpl: P.template, relayConfigured: !!P.relayConfigured, answers: {}, contact: {}, privacyAt: null };
+    K = { mode: "intake", client: {}, scan: null, noScan: false, scanOnly: false, hasFlash: !!(P.flash && P.flash.length), scannedAddress: "", frontPhoto: null, flashId: null, flashName: "", returning: !!returning, tpl: P.template, relayConfigured: !!P.relayConfigured, answers: {}, contact: {}, privacyAt: null };
     return {};
   }
   function wirePhoneFields(root, prefix) {
@@ -244,7 +244,7 @@ const Consent = (() => {
     bind(root) {
       const b = $("#kNext", root);
       $("#privOk", root).onchange = e => { b.disabled = !e.target.checked; };
-      b.onclick = () => { K.privacyAt = new Date().toISOString(); go(K.mode === "intake" ? "iInfo" : "kReview"); };
+      b.onclick = () => { K.privacyAt = new Date().toISOString(); go(K.mode === "intake" ? (K.scanOnly ? (K.hasFlash ? "iFlash" : "kQuestions") : "iInfo") : "kReview"); };
     }
   };
 
@@ -299,7 +299,7 @@ const Consent = (() => {
         ${s.questions.map(qHtml).join("")}
         ${s.questions.filter(q => q.type === "check").length > 1 ? `<button class="small ghost" data-all="${si}" style="margin-top:8px">Tick all in this section</button>` : ""}
         ${s.initials ? `<div class="qrow initials-pad-wrap"><div class="ql">Draw your initials *</div><div class="initials-pad"><canvas data-initials="${si}" width="420" height="150" style="width:100%;max-width:420px;height:150px;border:1px solid #999;background:#fff;touch-action:none"></canvas><span class="initials-hint">Initial here</span></div><button type="button" class="small ghost" data-initials-clear="${si}">Clear</button></div>` : ""}</div>`).join("")}
-      <div id="kErr"></div><div class="actions"><button class="ghost" data-go="${K.mode === "intake" ? "iInfo" : "kReview"}">‹ Back</button><button class="primary" id="kNext">Continue</button></div>`,
+      <div id="kErr"></div><div class="actions"><button class="ghost" data-go="${K.mode === "intake" && K.scanOnly ? "kPrivacy" : K.mode === "intake" ? "iInfo" : "kReview"}">‹ Back</button><button class="primary" id="kNext">Continue</button></div>`,
     bind(root) {
       root.addEventListener("click", e => {
         const b = e.target.closest(".yn button");
@@ -368,7 +368,7 @@ const Consent = (() => {
   screens.kSign = {
     html: () => `${kbar("Read and sign")}
       <div class="card agree">${K.tpl.agreement.map(p => `<p>${esc(p)}</p>`).join("")}</div>
-      ${ConsentCopy.html(defaultEmail(), relayOk())}
+      ${ConsentCopy.html(defaultEmail(), relayOk(), K.scanOnly ? { onFile: true } : {})}
       <label>Sign below with your finger or Apple Pencil</label>
       <canvas id="sig" class="sig"></canvas>
       <div class="actions"><button class="ghost" id="sigClear">Clear</button><button class="ghost" data-go="kQuestions">‹ Back</button>
@@ -392,7 +392,7 @@ const Consent = (() => {
 
   /* Intake side: build the PDF and consent entirely from what the client typed, then SEAL it. Nothing is read from the store. */
   async function finishIntake(signature) {
-    const now = new Date().toISOString(), c = K.client, docId = crypto.randomUUID(), sessId = crypto.randomUUID();
+    const now = new Date().toISOString(), c = K.scanOnly ? { legalName: K.client.legalName, dob: K.client.dob, licenseNumber: K.client.licenseNumber, ...(K.client.address ? { address: K.client.address } : {}) } : K.client, docId = crypto.randomUUID(), sessId = crypto.randomUUID();
     const ageAtSigning = ageOn(c.dob);
     const idCheck = K.scan ? { at: now, method: "pdf417-barcode", idState: K.scan.idState, idExpiry: K.scan.idExpiry, idExpired: K.scan.idExpired,
       matched: K.scan.scanned ? IdMatch.compare(K.scan.scanned, c).matched : true,
@@ -402,9 +402,9 @@ const Consent = (() => {
     const bytes = await buildPdf({ business: settings.business, minAge: settings.minAge, client: c, session, tpl: K.tpl, answers: K.answers,
       signature, signedAt: now, docId, ageAtSigning, idCheck, privacy, artist: settings.artistName });
     const sha256 = hex(await crypto.subtle.digest("SHA-256", bytes));
-    await DB.seal({ v: 1, submittedAt: now, returning: K.returning, client: c, idCheck, idPhoto: K.frontPhoto,
+    await DB.seal({ v: 1, submittedAt: now, returning: K.returning, scanOnly: !!K.scanOnly, client: c, idCheck, idPhoto: K.frontPhoto,
       ...(K.idPhotoCheck ? { idPhotoCheck: { score: K.idPhotoCheck.score } } : {}), session,
-      consent: { id: docId, signedAt: now, copyTo: K.copy.to || "", template: K.tpl, answers: K.answers, signature, idCheck, ageAtSigning, privacy, pdf: bytesToB64(bytes), sha256 } });
+      consent: { id: docId, signedAt: now, copyTo: K.copy.to || "", copyToOnFile: !!K.copy.onFile, template: K.tpl, answers: K.answers, signature, idCheck, ageAtSigning, privacy, pdf: bytesToB64(bytes), sha256 } });
     return docId;
   }
 
