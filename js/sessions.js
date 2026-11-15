@@ -1,5 +1,5 @@
 "use strict";
-/* Tattoo sessions, walk-in queue / event overview, flash gallery, and the tattoo timer. */
+/* Tattoo sessions, walk-in queue, event overview, and flash gallery. */
 const Sessions = (() => {
   const LABEL = { waiting: "Waiting", paperwork: "Completing paperwork", ready: "Ready", inprogress: "Tattoo in progress", completed: "Completed", cancelled: "Cancelled" };
   const ACTIVE = ["waiting", "paperwork", "ready", "inprogress"];
@@ -10,16 +10,6 @@ const Sessions = (() => {
   const clientName = id => (DB.get(id) || {}).legalName || "Unknown";
   const sessions = () => DB.all("session");
   const save = async (s, patch) => { const n = { ...s, ...patch, updatedAt: new Date().toISOString() }; await DB.put(n); return n; };
-
-  /* ----- timer (segments so you can pause for breaks) ----- */
-  const segs = s => s.segments || [];
-  const running = s => segs(s).some(x => !x.e);
-  const elapsed = s => segs(s).reduce((t, x) => t + ((x.e ? new Date(x.e) : new Date()) - new Date(x.s)), 0);
-  const fmt = ms => { const t = Math.floor(ms / 1000), h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), s = t % 60; return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`; };
-  const shortDuration = ms => { const t = Math.floor(ms / 60000), h = Math.floor(t / 60), m = t % 60; return `${h}:${String(m).padStart(2, "0")}`; };
-  const hourlyApplies = s => (s.flashId ? ev().hourlyApplies === true : ev().hourlyApplies !== false);
-  const suggestion = s => s.status === "completed" && hourlyApplies(s) && s.durationMs >= 0
-    ? Pricing.suggest(s.durationMs, (settings.pricing || {}).rate, { round: (settings.pricing || {}).round }) : null;
 
   /* The client's queue entry that is still waiting for paperwork, so paperwork never makes a second entry. */
   function openForPaperwork(clientId) {
@@ -58,13 +48,20 @@ const Sessions = (() => {
         <div class="card">${all.map(row).join("") || '<span class="mute">Nobody in the queue yet.</span>'}</div>`;
     }
   };
+  const legacyQueueHtml = screens.queue.html;
+  screens.queue.html = () => legacyQueueHtml()
+    .replace(/timer (?:running|paused) [^<]*/, "")
+    .replace(/Flash gallery<\/button>/, `Flash gallery</button>${TimesImportUI.button()}`);
+  const running = () => false;
+  const elapsed = s => SessionTime.duration(s);
+  const fmt = ms => SessionTime.format(ms);
   function actions(s) {
     const b = (a, t, cls = "") => `<button class="small ${cls}" data-act="${a}" data-id="${esc(s.id)}">${t}</button>`;
     const cl = DB.get(s.clientId), lastId = cl && (cl.idChecks || []).slice(-1)[0], needId = lastId && !lastId.visuallyMatched;
     const idBtn = needId ? b("confirmid", "Confirm ID", "") : "";
     if (s.status === "waiting" || s.status === "paperwork") return idBtn + b("paper", "Paperwork", "primary") + b("cancel", "Cancel", "danger");
     if (s.status === "ready") return idBtn + b("start", "Start tattoo", "primary") + b("cancel", "Cancel", "danger");
-    if (s.status === "inprogress") return b("open", "Open timer", "primary");
+    if (s.status === "inprogress") return b("open", "Open session", "primary");
     return "";
   }
   document.addEventListener("click", async e => {
@@ -75,14 +72,12 @@ const Sessions = (() => {
       const r = Consent.start(s.clientId, s.id);
       if (r.error) { alert(r.error); return; }
       await save(s, { status: "paperwork" }); go("kPrivacy");
-    } else if (b.dataset.act === "start") { await startTimer(s); go("session", { id: s.id }); }
+    } else if (b.dataset.act === "start") { await startTattoo(s); go("session", { id: s.id }); }
     else if (b.dataset.act === "open") go("session", { id: s.id });
     else if (b.dataset.act === "cancel") { if (confirm("Cancel this person's place in the queue?")) { await Flash.release(s.flashId); await save(s, { status: "cancelled" }); go("queue"); } }
   });
-  async function startTimer(s) {
-    const n = { ...DB.get(s.id) };
-    n.segments = [...segs(n).filter(x => x.e), { s: new Date().toISOString(), e: null }]; if (segs(n).length === 1 && !n.startedAt) n.startedAt = n.segments[0].s;
-    n.status = "inprogress"; await DB.put({ ...n, updatedAt: new Date().toISOString() });
+  async function startTattoo(s) {
+    await save(s, { status: "inprogress", startedAt: s.startedAt || new Date().toISOString() });
   }
 
   /* ----- walk-in: pick a client, then (optionally) a flash design ----- */
@@ -100,26 +95,24 @@ const Sessions = (() => {
       $("#results", root).onclick = e => { const r = e.target.closest("[data-pick]"); if (r) go("flashPick", { id: r.dataset.pick }); };
     }
   };
-  /* ----- session detail (tattoo record + timer) ----- */
-  let tick = null;
+  /* ----- session detail (tattoo record) ----- */
   screens.session = {
     html({ id }) {
       const s = DB.get(id);
       if (!s) return `${bar("Session", { back: "queue" })}<div class="banner bad">Not found.</div>`;
       const t = s.tattoo || {};
       const f = (k, l, v, a = "") => `<label for="s_${k}">${l}</label><input id="s_${k}" value="${esc(v)}" ${a}>`;
-      const suggested = suggestion(s);
+      const suggested = SessionTime.suggestion(s);
       const pricing = { ...Pricing.defaults, ...(settings.pricing || {}) };
       return `${bar(esc(clientName(s.clientId)), { back: "queue" })}
         <div class="card"><div class="mute">${LABEL[s.status]}${s.flashName ? " · Flash: " + esc(s.flashName) : ""}</div>
-          <div class="timer" id="timer">${fmt(elapsed(s))}</div>
+          <div><strong>Tattoo time</strong> ${s.durationMs !== undefined || (s.segments || []).length ? `<span>${SessionTime.format(SessionTime.duration(s))}</span>` : `<span class="mute">Not recorded</span>`}${s.timeSource ? ` <span class="mute">(${s.timeSource === "timer-app" ? "from timer app" : "typed"})</span>` : ""}<label class="sub" for="s_minutes">Edit minutes</label><input id="s_minutes" type="number" min="0" step="1" value="${s.durationMs === undefined ? "" : Math.round(s.durationMs / 60000)}" inputmode="numeric"></div>
           ${s.consentId ? `<div class="actions" style="margin-top:0"><button data-go="doc" data-id="${esc(s.consentId)}">Signed contract / countersign</button></div>` : ""}
           <div class="actions" style="margin-top:0">
-            ${s.status === "inprogress" ? (running(s) ? `<button id="tPause">Pause (break)</button>` : `<button class="primary" id="tResume">Resume</button>`) : ""}
             ${["ready", "waiting", "paperwork"].includes(s.status) ? `<button class="primary" id="tStart">Start tattoo</button>` : ""}
             ${s.status === "inprogress" ? `<button class="primary" id="tDone">Finish tattoo</button>` : ""}</div></div>
         <div class="cols"><div>${f("description", "Tattoo description", t.description)}${f("location", "Body location", t.location)}${f("size", "Approximate size", t.size)}</div>
-          <div>${f("price", "Price", s.price, 'inputmode="decimal"')}${suggested !== null ? `<div class="mute" id="priceSuggestion">Suggested: $${suggested} (${shortDuration(s.durationMs)} at $${pricing.rate}/hr) <button type="button" class="small" id="useSuggested">Use suggested</button></div>` : ""}${f("deposit", "Deposit", s.deposit, 'inputmode="decimal"')}${f("paid", "Amount paid", s.paid, 'inputmode="decimal"')}
+          <div>${f("price", "Price", s.price, 'inputmode="decimal"')}${suggested !== null ? `<div class="mute" id="priceSuggestion">Suggested: $${suggested} (${SessionTime.short(SessionTime.duration(s))} at $${pricing.rate}/hr) <button type="button" class="small" id="useSuggested">Use suggested</button></div>` : ""}${f("deposit", "Deposit", s.deposit, 'inputmode="decimal"')}${f("paid", "Amount paid", s.paid, 'inputmode="decimal"')}
             <label for="s_payMethod">Payment method</label><select id="s_payMethod">${["", "Cash", "Card", "Venmo / Cash App", "Other"].map(o => `<option ${o === (s.payMethod || "") ? "selected" : ""}>${o}</option>`).join("")}</select></div></div>
         <div class="card" style="margin-top:16px"><strong>Procedure record (artist use)</strong>
           <div class="cols"><div>${f("needleType", "Needle / cartridge type", (s.record || {}).needleType)}${f("needleLot", "Needle / cartridge lot", (s.record || {}).needleLot)}${f("barrier", "Barrier / dressing used", (s.record || {}).barrier)}</div>
@@ -134,28 +127,24 @@ const Sessions = (() => {
         ${PhotosUI.sessionSection(s)} `;
     },
     bind(root, { id }) {
-      clearInterval(tick);
       const s0 = DB.get(id); if (!s0) return;
       PhotosUI.bindSession(root, id);
-      tick = setInterval(() => { const el = $("#timer"); if (!el || cur.name !== "session") { clearInterval(tick); return; } el.textContent = fmt(elapsed(DB.get(id))); }, 1000);
       const v = k => $("#s_" + k, root).value.trim();
       const saveFields = async () => save(DB.get(id), { tattoo: { description: v("description"), location: v("location"), size: v("size") },
         record: { needleType: v("needleType"), needleLot: v("needleLot"), barrier: v("barrier"), inkBrand: v("inkBrand"), pigment: v("pigment"), inkLot: v("inkLot"), inkExp: v("inkExp"),
           aftercareProvided: $("#s_aftercare", root).checked, finalPhoto: $("#s_photo", root).checked, complications: $("#s_compl", root).value,
           artistAck: $("#s_ack", root).checked, artistAckAt: $("#s_ack", root).checked ? (((DB.get(id) || {}).record || {}).artistAckAt || new Date().toISOString()) : null },
-        price: v("price"), deposit: v("deposit"), paid: v("paid"), payMethod: $("#s_payMethod", root).value, notes: $("#s_notes", root).value });
+        price: v("price"), deposit: v("deposit"), paid: v("paid"), payMethod: $("#s_payMethod", root).value, notes: $("#s_notes", root).value,
+        ...($("#s_minutes", root) && $("#s_minutes", root).value.trim() !== "" ? { durationMs: Number($("#s_minutes", root).value) * 60000, timeSource: "typed" } : {}) });
       $("#sSave", root).onclick = async () => { await saveFields(); $("#sMsg", root).textContent = "Saved"; };
-      $("#useSuggested", root)?.addEventListener("click", () => { $("#s_price", root).value = suggestion(DB.get(id)); });
+      $("#useSuggested", root)?.addEventListener("click", () => { $("#s_price", root).value = SessionTime.suggestion(DB.get(id)); });
       $("#acGive", root).onclick = async () => {
         try { await saveFields(); await Aftercare.give(id, $("#acPick", root).value); go("session", { id }); }
         catch (e) { alert(e.message); }
       };
       const wire = (sel, fn) => { const el = $(sel, root); if (el) el.onclick = async () => { await saveFields(); await fn(DB.get(id)); go("session", { id }); }; };
-      wire("#tStart", s => startTimer(s));
-      wire("#tResume", s => save(s, { segments: [...segs(s), { s: new Date().toISOString(), e: null }] }));
-      wire("#tPause", s => save(s, { segments: segs(s).map(x => x.e ? x : { ...x, e: new Date().toISOString() }) }));
-      wire("#tDone", async s => { const done = await save(s, { segments: segs(s).map(x => x.e ? x : { ...x, e: new Date().toISOString() }), status: "completed", endedAt: new Date().toISOString(),
-        durationMs: elapsed({ segments: segs(s).map(x => x.e ? x : { ...x, e: new Date().toISOString() }) }) }); await Flash.complete(done.flashId); });
+      wire("#tStart", s => startTattoo(s));
+      wire("#tDone", async s => { const done = await save(s, { status: "completed", endedAt: new Date().toISOString() }); await Flash.complete(done.flashId); });
     }
   };
 

@@ -14,7 +14,8 @@ Keep replies short.
 
 ## Layout (js/)
 db.js store/crypto/backup-import | app.js boot/router/PIN/home/client/settings | consent.js contract UI, signature, PDFs, kiosk
-contract.js contract template data | intake.js intake side + inbox import | sessions.js queue/flash/session/timer
+contract.js contract template data | intake.js intake side + inbox import | sessions.js queue/flash/session
+session-time.js legacy time display/pricing | times-import.js Tattoo Timer parsing/matching | times-import-ui.js import screen
 appointments.js appointment data/rules | appointments-ui.js appointment screens | calendar-sync.js relay queue | calendar-settings.js settings
 flash-code.js pure flash code normalization/matching
 intake-staff.js intake staff license screens/scanner | client-match.js returning import matching | client-contact.js missing-contact status

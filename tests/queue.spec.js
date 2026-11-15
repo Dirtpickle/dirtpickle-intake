@@ -1,7 +1,7 @@
 const { test, expect } = require("@playwright/test");
 const { setup, newClient, goHome, answerContract, makeSignature } = require("./helpers/app");
 
-test("adds a walk-in, creates a session, and pauses its timer", async ({ page }) => {
+test("adds a walk-in, starts a tattoo, and records its start time", async ({ page }) => {
   await setup(page);
   await newClient(page, "Queue Client");
   await goHome(page);
@@ -13,9 +13,9 @@ test("adds a walk-in, creates a session, and pauses its timer", async ({ page })
   await expect(page.locator(".card")).toContainText("Queue Client");
   await page.locator('[data-go="session"]').click();
   await page.locator("#tStart").click();
-  await expect(page.locator("#tPause")).toBeVisible();
-  await page.locator("#tPause").click();
-  await expect(page.locator("#tResume")).toBeVisible();
+  await expect(page.locator("#tDone")).toBeVisible();
+  await expect(page.locator("#timer")).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => DB.all("session").find(s => s.status === "inprogress").startedAt)).toBeTruthy();
 });
 
 test("starting paperwork from a profile reuses the client's waiting queue entry", async ({ page }) => {
