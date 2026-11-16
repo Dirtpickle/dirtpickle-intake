@@ -12,9 +12,16 @@ const TimesImport = (() => {
         throw new Error("Each tattoo time entry needs an id, code, activeMs, and segments.");
       }
     }
-    return data.entries;
+    return data.entries.map(entry => ({ ...entry, revision: Number.isInteger(entry.revision) && entry.revision >= 0 ? entry.revision : 0 }));
   };
   const codeFor = s => FlashCode.normalize(s.flashCode || "");
+  const revisionFor = entry => Number.isInteger(entry.revision) && entry.revision >= 0 ? entry.revision : 0;
+  const appliedRevision = (session, id) => Number.isInteger(session.timerEntryRevisions?.[id]) && session.timerEntryRevisions[id] >= 0 ? session.timerEntryRevisions[id] : 0;
+  const classify = (entry, sessions) => {
+    const session = sessions.find(s => (s.timerEntryIds || []).includes(entry.id));
+    if (!session) return { entry, kind: "new", session: null };
+    return { entry, session, kind: revisionFor(entry) > appliedRevision(session, entry.id) ? "update" : "same", appliedRevision: appliedRevision(session, entry.id) };
+  };
   const rank = (entry, sessions) => sessions
     .filter(s => !(s.timerEntryIds || []).includes(entry.id))
     .map((s, index) => ({ session: s, index, code: codeFor(s), sameCode: codeFor(s) === FlashCode.normalize(entry.code), active: ["inprogress", "completed"].includes(s.status) }))
@@ -23,8 +30,9 @@ const TimesImport = (() => {
   const suggest = (entry, sessions) => rank(entry, sessions);
   const apply = (session, entry) => ({
     durationMs: Number(entry.activeMs), segments: entry.segments, timeSource: "timer-app",
-    timerEntryIds: [...(session.timerEntryIds || []), entry.id]
+    timerEntryIds: (session.timerEntryIds || []).includes(entry.id) ? [...session.timerEntryIds] : [...(session.timerEntryIds || []), entry.id],
+    timerEntryRevisions: { ...(session.timerEntryRevisions || {}), [entry.id]: revisionFor(entry) }
   });
   const importedIds = sessions => new Set(sessions.flatMap(s => s.timerEntryIds || []));
-  return { parse, suggest, apply, importedIds };
+  return { parse, suggest, apply, classify, importedIds };
 })();
