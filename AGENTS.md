@@ -18,7 +18,7 @@ contract.js contract template data | intake.js intake side + inbox import | sess
 session-time.js legacy time display/pricing | times-import.js Tattoo Timer parsing/matching | times-import-ui.js import screen
 appointments.js appointment data/rules | appointments-ui.js appointment screens | calendar-sync.js relay queue | calendar-settings.js settings
 flash-code.js pure flash code normalization/matching
-intake-staff.js intake staff license screens/scanner | client-match.js returning import matching | client-contact.js missing-contact status
+intake-staff.js intake staff license screens/scanner | client-match.js returning import matching | client-contact.js missing-contact status | client-file.js client file aggregation | client-file-ui.js client file screen/options | client-file-pdf.js client file PDF | pdf-layout.js PDF layout helpers
 backup.js | formeditor.js | aamva.js license barcode parser | scan.js camera/photo scan | sw.js service worker
 vendor/ = pdf-lib, zxing-wasm (do not edit). email-test/ = scratch, ignore.
 

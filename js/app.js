@@ -425,6 +425,7 @@ screens.profile = {
         ${c.licenseNumber ? `<dt>License number</dt><dd><span id="licenseValue">••••${esc(String(c.licenseNumber).slice(-4))}</span> <button class="small ghost" id="toggleLicense">Show</button></dd>` : ""}
         ${row("First registered", fmtDate(c.createdAt))}</dl>
       <div class="actions"><button data-go="clientForm" data-id="${esc(c.id)}">Review / edit info</button>
+        <button data-go="clientFile" data-id="${esc(c.id)}">View full file</button>
         <button data-go="appointmentForm" data-client-id="${esc(c.id)}">Book appointment</button>
         <button id="addVisit">Record visit today</button>
         <button data-go="flashPick" data-id="${esc(c.id)}">Add to today's queue</button>
