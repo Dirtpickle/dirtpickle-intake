@@ -39,3 +39,18 @@ test("client file PDF reports contract append and ID-photo choice", async ({ pag
   expect(result.withPhoto).toBe(true);
   expect(result.appended).toBe(1);
 });
+
+test("ID photo can be re-cropped from the client file", async ({ page }) => {
+  await setup(page);
+  await page.evaluate(async () => {
+    const c = document.createElement("canvas"); c.width = 400; c.height = 300;
+    const x = c.getContext("2d"); x.fillStyle = "#888"; x.fillRect(0, 0, 400, 300);
+    await DB.put({ type: "client", id: "crop-client", legalName: "Crop Client", idPhotos: [{ at: "2024-01-01T00:00:00.000Z", image: c.toDataURL("image/jpeg") }] });
+    go("clientFile", { id: "crop-client" });
+  });
+  await page.locator("#fileCropId").click();
+  await page.locator('[data-action="use"]').click();
+  await expect(page.locator("#fileCropId")).toBeVisible();
+  const ok = await page.evaluate(() => DB.get("crop-client").idPhotos.length === 1 && DB.get("crop-client").idPhotos[0].image.startsWith("data:image/jpeg"));
+  expect(ok).toBe(true);
+});
