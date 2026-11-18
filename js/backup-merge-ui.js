@@ -9,7 +9,7 @@ const BackupMergeUI = (() => {
   });
 
   const html = () => `<div class="card"><strong>Merge a backup into this device</strong>
-    <p class="mute" style="font-size:16px">Adds records this device does not have and updates newer mutable records. It does not replace anything, copy settings, or copy the PIN. Deleted items on the other device may come back. Make a backup first if you want a safety copy.</p>
+    <p class="mute" style="font-size:16px">Adds records this device does not have, updates newer mutable records, and carries deletions between devices. It does not replace settings or copy the PIN.</p>
     <label class="btn" style="display:flex;align-items:center;justify-content:center;margin-top:12px">Choose backup file<input id="bkMergeFile" type="file" hidden></label>
     <div id="bkMergePicked" class="mute" style="margin-top:8px"></div>
     <label for="bkMergePin">PIN used when that backup was made</label><input id="bkMergePin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off">
@@ -29,7 +29,7 @@ const BackupMergeUI = (() => {
       if (!fileText) { out("warn", "Choose a backup file first."); return; }
       try {
         const result = await Backup.merge(fileText, $("#bkMergePin", root).value);
-        out(result.conflicts ? "warn" : "ok", `Added ${result.added}, updated ${result.updated}, skipped ${result.skipped} (conflicts ${result.conflicts}, unreadable ${result.unreadable}).`);
+        out(result.conflicts ? "warn" : "ok", `Added ${result.added}, updated ${result.updated}, merged ${result.merged}, removed ${result.removed}, skipped ${result.skipped} (ambiguous ${result.ambiguous}, conflicts ${result.conflicts}, unreadable ${result.unreadable}).`);
       } catch (error) { out("bad", error.message); }
     };
   }

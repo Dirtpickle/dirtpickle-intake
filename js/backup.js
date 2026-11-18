@@ -13,7 +13,7 @@ const Backup = (() => {
   async function create() {
     const { auth, recs, keys, inbox, pub } = await DB.exportRaw();
     const body = {
-      format: "dirtpickle-backup", version: 2, createdAt: new Date().toISOString(), count: recs.length + inbox.length,
+      format: "dirtpickle-backup", version: 3, createdAt: new Date().toISOString(), count: recs.length + inbox.length,
       auth: { salt: u8ToB64(auth.salt), check: encBox(auth.check), pinLength: auth.pinLength },
       records: recs.map(r => ({ id: r.id, type: r.type, ...encBox(r) })),
       keys: keys ? { pub: u8ToB64(keys.pub), wrappedPriv: encBox(keys.wrappedPriv) } : null,
@@ -64,13 +64,20 @@ const Backup = (() => {
     if (!decrypted.pinOk) throw new Error("That PIN does not open this backup.");
     const planned = BackupMerge.merge(DB.all(), decrypted.records);
     let added = 0, updated = 0, skipped = planned.skip.length;
+    for (const removal of planned.remove) {
+      try { await DB.remove(removal.id, { force: removal.force }); } catch (_) { skipped++; }
+    }
+    for (const tombstone of planned.tombstones) {
+      try { await DB.put(tombstone); } catch (_) { skipped++; }
+    }
     for (const record of planned.add) {
       try { await DB.put(record); added++; } catch (_) { skipped++; }
     }
     for (const record of planned.update) {
       try { await DB.put(record); updated++; } catch (_) { skipped++; }
     }
-    return { added, updated, skipped, conflicts: planned.conflicts, unreadable: decrypted.unreadable };
+    return { added, updated, merged: planned.merged, ambiguous: planned.ambiguous,
+      removed: planned.remove.length, skipped, conflicts: planned.conflicts, unreadable: decrypted.unreadable };
   }
 
   const days = iso => iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 86400000) : null;
@@ -159,5 +166,5 @@ const Backup = (() => {
       };
     }
   };
-  return { create, verify, restore, merge, overdue };
+  return { create, parse, verify, restore, merge, overdue };
 })();

@@ -10,7 +10,7 @@
      (keep backups). This is app-level encryption in a browser: strong against casual access,
      but not equivalent to iOS Keychain / SQLCipher in a native build. */
 const DB = (() => {
-  const NAME = "dp-app", VER = 2, ITER = 600000;
+  const NAME = "dp-app", VER = 3, ITER = 600000;
   let idb = null, key = null, priv = null; // priv: RSA private key, only while pro side is unlocked
   const cache = new Map(); // id -> decrypted object (only while unlocked)
   let unreadable = 0;
@@ -203,6 +203,13 @@ const DB = (() => {
       if (o && o.locked && !opts.force) throw new Error("Signed records are locked and cannot be deleted");
       await run("records", "readwrite", s => s.delete(id));
       cache.delete(id);
+      if (o && o.type === "tombstone") return;
+      const tombstone = { type: "tombstone", id: `ts-${id}`, targetId: id,
+        targetType: o?.type || opts.targetType || "unknown", deletedAt: new Date().toISOString() };
+      if (opts.force) tombstone.force = true;
+      const sealed = await enc(tombstone);
+      await run("records", "readwrite", s => s.put({ id: tombstone.id, type: tombstone.type, iv: sealed.iv, data: sealed.data }));
+      cache.set(tombstone.id, tombstone);
     },
     async put(obj) {
       if (!key) throw new Error("Locked");
