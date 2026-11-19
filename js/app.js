@@ -42,6 +42,7 @@ let cur = { name: "home", params: {} };
 const screens = {};
 let pendingScan = null;
 function go(name, params = {}, { fromPopstate = false, replace = false } = {}) {
+  if (!DB.isUnlocked() && !INTAKE_SCREEN.test(name)) return; // second gate: locked means intake screens only
   if (name !== "scan" && name !== "clientForm") pendingScan = null;
   if (cur.name === "scan") Scan.stop();
   if (fromPopstate) {
@@ -62,6 +63,8 @@ function go(name, params = {}, { fromPopstate = false, replace = false } = {}) {
 const INTAKE_SCREEN = /^[ik][A-Z]/;
 Nav.start((name, params) => {
   if (!DB.isUnlocked() && !INTAKE_SCREEN.test(name)) return;
+  /* Kiosk: after a check-in ends there is no form state, so Back goes to the welcome screen, never a half-empty step. */
+  if (!DB.isUnlocked() && name !== "iWelcome" && !Consent.K()) { go("iWelcome", {}, { replace: true }); return; }
   go(name, params, { fromPopstate: true });
 });
 function bar(title, { back, backId } = {}) {
