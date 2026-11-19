@@ -86,5 +86,5 @@ function syncPut(d) {
 function authorizeAll() {
   MailApp.getRemainingDailyQuota();
   CalendarApp.getDefaultCalendar();
-  DriveApp.getRootFolder();
+  DriveApp.createFile("authorize-test.txt", "ok").setTrashed(true);
 }
