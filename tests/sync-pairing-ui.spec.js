@@ -8,13 +8,13 @@ test("sync card guides main-device setup and second-device pairing", async ({ br
   await expect(a.getByRole("button", { name: /MAIN device/ })).toBeVisible();
   await a.getByRole("button", { name: /MAIN device/ }).click();
   const code = (await a.locator("#syncCodeText").textContent()).trim();
-  expect(code).toMatch(/^v1\./);
+  expect(code).toMatch(/^[A-Z2-9]{4}-[A-Z2-9]{4}$/);
   await expect(a.getByRole("button", { name: "Copy code" })).toBeVisible();
   await b.getByRole("button", { name: /SECOND device/ }).click();
   await b.locator("#syncCodeIn").fill(code);
   await b.getByRole("button", { name: "Pair", exact: true }).click();
   await expect(b.getByRole("button", { name: "Sync now" })).toBeVisible();
   const same = await b.evaluate(() => DB.get("settings").syncSalt);
-  expect(SyncSealCodeSalt(code)).toBe(same);
-  function SyncSealCodeSalt(c) { return c.split(".")[1]; }
+  const mainSalt = await a.evaluate(() => DB.get("settings").syncSalt);
+  expect(same).toBe(mainSalt);
 });

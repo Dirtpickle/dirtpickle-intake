@@ -5,15 +5,15 @@ const SyncUI = (() => {
   const intro = "Sync keeps your iPad and phone matching. An encrypted copy of your data is stored in your own Google Drive. Google cannot read it. Both devices must use the same PIN. A forgotten PIN still cannot be recovered.";
   const configured = () => Mailer.configured(Mailer.relayFromSettings());
   const last = value => value ? new Date(value).toLocaleString() : "never";
-  const codeOf = salt => SyncSeal.pairingCode({ salt });
+  const codeOf = s => s.syncCode || SyncSeal.pairingCode({ salt: s.syncSalt });
   const fail = (root, e) => { const m = $("#syncMsg", root); m.textContent = e.message; m.hidden = false; };
 
   function offHtml() {
     return `<p><b>Not set up yet.</b> Pick one:</p>
       <div class="actions"><button id="syncTurnOn" type="button" class="primary">This is my MAIN device: turn on sync</button></div>
       <div class="actions"><button id="syncPairOpen" type="button">This is my SECOND device: pair it</button></div>
-      <div id="syncPairBox" hidden><label for="syncCodeIn">Type or paste the pairing code from your main device</label>
-        <input id="syncCodeIn" autocapitalize="off" autocomplete="off" spellcheck="false"><div class="actions"><button id="syncPairGo" type="button" class="primary">Pair</button></div></div>`;
+      <div id="syncPairBox" hidden><label for="syncCodeIn">Type the pairing code from your main device (like K7M-4QX9)</label>
+        <input id="syncCodeIn" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="40" style="font-size:24px;letter-spacing:2px"><div class="actions"><button id="syncPairGo" type="button" class="primary">Pair</button></div></div>`;
   }
   function onHtml(s) {
     return `<p><b>Sync is on.</b> Last synced: ${esc(last(s.lastSyncAt))}.</p>
@@ -26,28 +26,29 @@ const SyncUI = (() => {
       ${s.syncSalt ? onHtml(s) : offHtml()}<div id="syncMsg" class="banner bad" hidden></div>`;
   }
 
-  function showCode(root, salt) {
-    $("#syncCodeBox", root).innerHTML = `<div class="banner ok"><div style="font-size:15px">Pairing code. Copy it, then on your other device: Settings, Google connection, "This is my SECOND device", paste it.</div>
-      <div id="syncCodeText" style="font-family:monospace;font-size:22px;word-break:break-all;margin:10px 0;user-select:all">${esc(codeOf(salt))}</div>
+  function showCode(root, s) {
+    $("#syncCodeBox", root).innerHTML = `<div class="banner ok"><div style="font-size:15px">Pairing code. On your other device go to Settings, Google connection, "This is my SECOND device", and type this code. You only enter it once.</div>
+      <div id="syncCodeText" style="font-family:monospace;font-size:34px;letter-spacing:3px;margin:10px 0;user-select:all">${esc(codeOf(s))}</div>
       <div class="actions"><button id="syncCopy" type="button" class="small">Copy code</button>${navigator.share ? `<button id="syncShare" type="button" class="small">Send it to myself</button>` : ""}</div></div>`;
-    $("#syncCopy", root).onclick = async () => { try { await navigator.clipboard.writeText(codeOf(salt)); $("#syncCopy", root).textContent = "Copied"; } catch (_) { $("#syncCopy", root).textContent = "Select the code and copy it"; } };
-    const share = $("#syncShare", root); if (share) share.onclick = () => navigator.share({ text: codeOf(salt) }).catch(() => {});
+    $("#syncCopy", root).onclick = async () => { try { await navigator.clipboard.writeText(codeOf(s)); $("#syncCopy", root).textContent = "Copied"; } catch (_) { $("#syncCopy", root).textContent = "Select the code and copy it"; } };
+    const share = $("#syncShare", root); if (share) share.onclick = () => navigator.share({ text: codeOf(s) }).catch(() => {});
   }
   async function turnOn(root) {
     if (!configured()) throw new Error("First enter the Apps Script URL and secret in the Email section above, and save.");
-    const kit = SyncSeal.newKit();
-    settings = { ...settings, syncSalt: kit.salt, syncEnabled: true };
+    const kit = await SyncSeal.newPairing();
+    settings = { ...settings, syncSalt: kit.salt, syncCode: kit.code, syncEnabled: true };
     await DB.put(settings);
     $("#syncTurnOn", root).closest(".actions").outerHTML = `<p><b>Sync is on for this device.</b> Tap Sync now below, then pair your other device with this code.</p>`;
     $("#syncPairOpen", root).closest(".actions").remove();
     $("#syncPairBox", root).insertAdjacentHTML("beforebegin", `<div id="syncCodeBox"></div><div class="actions"><button id="syncNow" type="button" class="primary">Sync now</button></div><div id="syncResult" class="sub"></div>`);
     $("#syncNow", root).onclick = () => sync(root);
-    showCode(root, kit.salt);
+    showCode(root, settings);
   }
   async function pair(root) {
     if (!configured()) throw new Error("First enter the same Apps Script URL and secret in the Email section above, and save.");
-    const kit = SyncSeal.fromPairingCode($("#syncCodeIn", root).value.trim());
-    settings = { ...settings, syncSalt: kit.salt, syncEnabled: true };
+    const typed = $("#syncCodeIn", root).value.trim();
+    const salt = typed.startsWith("v1.") ? SyncSeal.fromPairingCode(typed).salt : await SyncSeal.saltFromCode(typed);
+    settings = { ...settings, syncSalt: salt, syncCode: typed.startsWith("v1.") ? undefined : typed.toUpperCase(), syncEnabled: true };
     await DB.put(settings);
     go("settingsGoogle");
   }
@@ -65,7 +66,7 @@ const SyncUI = (() => {
     const on = (id, fn) => $(id, root)?.addEventListener("click", () => fn(root).catch(e => fail(root, e)));
     on("#syncTurnOn", turnOn); on("#syncPairGo", pair); on("#syncNow", sync);
     $("#syncPairOpen", root)?.addEventListener("click", () => { $("#syncPairBox", root).hidden = false; $("#syncCodeIn", root).focus(); });
-    $("#syncShowCode", root)?.addEventListener("click", () => showCode(root, (DB.get("settings") || {}).syncSalt));
+    $("#syncShowCode", root)?.addEventListener("click", () => showCode(root, DB.get("settings") || {}));
   }
   return { settingsHtml, bindSettings };
 })();
