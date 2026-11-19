@@ -18,3 +18,13 @@ test("sync card guides main-device setup and second-device pairing", async ({ br
   const mainSalt = await a.evaluate(() => DB.get("settings").syncSalt);
   expect(same).toBe(mainSalt);
 });
+
+test("sync PIN uses the on-screen keypad, not a browser prompt", async ({ page }) => {
+  await setup(page);
+  const result = page.evaluate(() => PinPrompt.ask("Enter your PIN to sync"));
+  for (const k of "123456") await page.locator(`.id-crop-screen [data-k="${k}"]`).click();
+  expect(await result).toBe("123456");
+  const cancelled = page.evaluate(() => PinPrompt.ask("x"));
+  await page.locator('.id-crop-screen [data-k="cancel"]').click();
+  expect(await cancelled).toBe(null);
+});

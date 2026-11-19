@@ -54,7 +54,7 @@ const SyncUI = (() => {
   }
   async function sync(root) {
     const msg = $("#syncMsg", root); msg.hidden = true;
-    const pin = prompt("Enter your PIN to sync. It must be the same PIN on both devices.");
+    const pin = await PinPrompt.ask("Enter your PIN to sync", "It must be the same PIN on both devices.");
     if (!pin) return;
     $("#syncResult", root).textContent = "Syncing…";
     try {
