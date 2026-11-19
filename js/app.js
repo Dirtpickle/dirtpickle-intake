@@ -111,6 +111,7 @@ function showPin(mode, err = "") {
     $("#app").querySelectorAll(".dots i").forEach((dot, i) => dot.classList.toggle("on", i < pinBuf.length));
     if (pinBuf.length < PIN_LEN) return;
     const entered = pinBuf; pinBuf = "";
+    PressFeedback.hold(450);
     await submitPin(mode, entered);
   };
   /* Act on touch-down so quick taps are never lost; click only handles keyboard activation. */

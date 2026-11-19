@@ -1,8 +1,8 @@
 "use strict";
 
 const Mailer = (() => {
-  const relayFromSettings = () => {
-    const s = DB.get("settings") || {};
+  const relayFromSettings = (override) => {
+    const s = override || DB.get("settings") || {};
     return { url: (s.emailRelayUrl || "").trim(), secret: s.relaySecret || "" };
   };
   const configured = relay => !!(relay && relay.url && relay.secret);
@@ -58,19 +58,19 @@ const Mailer = (() => {
     } finally { retrying = false; }
   }
 
-  async function sendTest(to) {
+  async function sendTest(to, relay) {
     const pdf = await PDFLib.PDFDocument.create();
     const page = pdf.addPage([240, 120]);
     page.drawText("Dirtpickle email relay test", { x: 24, y: 70, size: 12 });
     const bytes = await pdf.save();
     return sendDocument({ pdf: bytesToB64(bytes), signedAt: new Date().toISOString(),
-      clientSnapshot: { legalName: "relay-test", email: to } }, relayFromSettings());
+      clientSnapshot: { legalName: "relay-test", email: to } }, relay || relayFromSettings());
   }
 
   function settingsHtml() {
     const s = DB.get("settings") || {};
-    return `<label for="relayUrl">Email relay URL</label><input id="relayUrl" type="url" value="${esc(s.emailRelayUrl || "")}" placeholder="Apps Script /exec URL">
-      <label for="relaySecret">Relay secret</label><input id="relaySecret" type="password" value="" placeholder="${s.relaySecret ? "Saved; leave blank to keep" : "Enter the Apps Script secret"}" autocomplete="new-password">
+    return `<label for="relayUrl">Email relay URL</label><div class="field-row"><input id="relayUrl" type="url" value="${esc(s.emailRelayUrl || "")}" placeholder="Apps Script /exec URL"><button id="relayUrlClear" type="button" class="ghost">Clear</button></div>
+      <label for="relaySecret">Relay secret</label><div class="field-row"><input id="relaySecret" type="password" value="" placeholder="${s.relaySecret ? "Saved; leave blank to keep" : "Enter the Apps Script secret"}" autocomplete="new-password"><button id="relaySecretEye" type="button" class="ghost" aria-label="Show or hide secret">Show</button></div>
       <label for="testEmail">Test email address</label><input id="testEmail" type="email" placeholder="you@example.com" autocomplete="off">
       <button id="sendTestEmail" type="button">Send test email</button><span id="relayMsg" class="mute" style="margin-left:8px"></span>`;
   }
@@ -81,11 +81,18 @@ const Mailer = (() => {
   }
 
   function bindSettings(root) {
+    $("#relayUrlClear", root).onclick = () => { const i = $("#relayUrl", root); i.value = ""; i.focus(); };
+    $("#relaySecretEye", root).onclick = () => {
+      const i = $("#relaySecret", root), b = $("#relaySecretEye", root), show = i.type === "password";
+      if (show && !i.value) i.value = (DB.get("settings") || {}).relaySecret || "";
+      i.type = show ? "text" : "password"; b.textContent = show ? "Hide" : "Show";
+    };
     $("#sendTestEmail", root).onclick = async () => {
       const to = $("#testEmail", root).value.trim();
       const msg = $("#relayMsg", root);
       if (!to) { msg.textContent = "Enter an address first."; return; }
-      try { await sendTest(to); msg.textContent = "Test sent."; }
+      msg.textContent = "Sending…";
+      try { const typed = readSettings(root, DB.get("settings") || {}); await sendTest(to, relayFromSettings(typed)); msg.textContent = "Test sent. Check the inbox."; }
       catch (e) { msg.textContent = e.message; }
     };
   }

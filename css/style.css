@@ -12,6 +12,9 @@ button.primary { background:var(--pink); color:#000; border-color:var(--pink); }
 button.ghost { background:transparent; }
 button.danger { color:var(--bad); }
 button:disabled { opacity:.35; }
+button:active, .btn:active, button.pressed, .btn.pressed { transform:scale(.95); filter:brightness(1.35); }
+button, .btn { transition:transform .08s, filter .08s; }
+.field-row { display:flex; gap:8px; align-items:stretch; } .field-row input { flex:1; min-width:0; } .field-row button { min-height:0; padding:0 16px; }
 button.small { min-height:44px; padding:0 14px; font-size:17px; }
 .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(230px,1fr)); gap:16px; }
 .tile { min-height:130px; display:flex; flex-direction:column; align-items:flex-start; justify-content:flex-end; padding:18px;
