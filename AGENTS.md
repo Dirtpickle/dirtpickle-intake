@@ -28,7 +28,7 @@ vendor/ = pdf-lib, zxing-wasm (do not edit). email-test/ = scratch, ignore.
 - No new dependencies or network calls (offline-first) without approval.
 - Do not claim legal compliance. Contract wording is a draft; do not rewrite it unasked.
 - Never display an ink as "safe"; allergy matching is a soft highlight only. Do not invent ink ingredients.
-- Monolith watch: app.js (~460) and consent.js (~536) exceed 300 lines. Split what you touch before adding to it.
+- Size: ~300 lines per file and ~50 per function are guides, not hard limits. Claude monitors size; split by responsibility when something gets hard to read (app.js ~420 and consent.js ~536 are the big ones). Do not churn code just to hit a number.
 
 ## Verify
 `npm install && npx playwright install chromium && npm test`
