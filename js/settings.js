@@ -1,0 +1,23 @@
+"use strict";
+
+const SettingsMenu = (() => {
+  const entries = [
+    ["settingsBusiness", "Business", "Name, age, pricing and auto-lock"],
+    ["settingsContracts", "Signature & contracts", "Signatures, forms, blank contracts and aftercare"],
+    ["settingsGoogle", "Google connection", "Email, calendar and Drive sync"],
+    ["backup", "Backup & security", "Back up, restore or change the PIN"],
+    ["settingsDanger", "Danger zone", "Erase test data"]
+  ];
+
+  function html() {
+    return `${bar("Settings", { back: "home" })}<div class="card settings-menu">${entries.map(([id, title, help]) =>
+      `<button class="tile" data-go="${id}" style="width:100%;text-align:left;margin-bottom:12px"><span>${title}</span><small>${help}</small></button>`).join("")}
+      ${AppVersion.html()}</div>`;
+  }
+
+  function register(screens) {
+    screens.settings = { html, bind: root => AppVersion.bind(root) };
+  }
+
+  return { register };
+})();

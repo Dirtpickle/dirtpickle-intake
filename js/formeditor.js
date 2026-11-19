@@ -17,7 +17,7 @@ const FormEditor = (() => {
         <button class="small" data-ed="up" ${qi === 0 ? "disabled" : ""}>↑</button><button class="small" data-ed="down" ${last ? "disabled" : ""}>↓</button>
         <button class="small danger" data-ed="delq">Remove</button></div></div>`;
   }
-  const html = () => `${bar("Edit consent form", { back: "settings" })}
+  const html = () => `${bar("Edit consent form", { back: "settingsContracts" })}
     <div class="banner warn" style="font-weight:400">Saving creates version ${nextVersion()}. Forms already signed keep the exact wording they were signed with.</div>
     <label for="e_name">Form name (for your reference)</label><input id="e_name" value="${esc(E.name)}">
     <label for="e_title">Title printed on the form</label><input id="e_title" value="${esc(E.title)}">

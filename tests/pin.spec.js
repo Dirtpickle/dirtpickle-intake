@@ -14,6 +14,7 @@ test("sets up, unlocks, rejects a wrong PIN, and locks", async ({ page }) => {
 test("auto-locks after inactivity", async ({ page }) => {
   await setup(page);
   await page.locator('[data-go="settings"]').click();
+  await page.locator('[data-go="settingsBusiness"]').click();
   await page.locator("#autoLock").fill("1");
   await page.locator("#saveSettings").click();
   const now = Date.now();

@@ -500,71 +500,7 @@ screens.profile = {
 };
 
 /* ---------- Settings ---------- */
-screens.settings = {
-  html: () => `${bar("Settings", { back: "home" })}
-    <div class="card"><label for="biz" style="margin-top:0">Business name</label><input id="biz" value="${esc(settings.business)}">
-      <label for="artist">Tattoo artist legal name / business entity (printed on contracts)</label><input id="artist" value="${esc(settings.artistName)}">
-      <label for="minAge">Minimum client age</label><input id="minAge" type="number" inputmode="numeric" min="0" max="99" value="${settings.minAge}">
-      <hr><strong>Pricing</strong>
-      ${Pricing.settingsHtml(settings)}
-      <label for="autoLock">Auto-lock after (minutes of no activity)</label><input id="autoLock" type="number" inputmode="numeric" min="1" max="120" value="${settings.autoLockMin}">
-      <hr><strong>Email relay</strong><p class="mute" style="font-size:16px">The relay URL and secret are encrypted with your PIN and never available during client check-in.</p>
-      ${Mailer.settingsHtml()}
-      <hr><strong>Calendar sync</strong><p class="mute" style="font-size:16px">Appointments use the same Apps Script relay as email. Calendar events contain only the client's first name and tattoo summary.</p>
-      ${CalendarSettings.settingsHtml()}
-      ${SyncUI.settingsHtml()}
-      ${AppVersion.html()}
-      <div class="actions"><button class="primary" id="saveSettings">Save settings</button><span id="setMsg" class="mute" style="align-self:center"></span></div></div>
-    <div class="card"><strong>Artist signature and initials</strong>
-      <p class="mute" style="font-size:16px">Used on contracts you print and when you countersign a signed contract. Stored encrypted. Never available to the intake side.</p>
-      <label>Signature ${settings.artistSignature ? "(saved. Draw again to replace it)" : "(not saved yet)"}</label>
-      ${settings.artistSignature ? `<img src="${settings.artistSignature}" alt="" style="background:#fff;border-radius:10px;max-width:320px;width:100%;display:block;margin-bottom:8px">` : ""}
-      <canvas id="aSig" class="sig" style="height:150px"></canvas>
-      <div class="actions" style="margin-top:8px"><button class="small ghost" id="aSigClear">Clear</button><button class="small primary" id="aSigSave" disabled>Save signature</button></div>
-      <label>Initials ${settings.artistInitials ? "(saved. Draw again to replace them)" : "(not saved yet)"}</label>
-      ${settings.artistInitials ? `<img src="${settings.artistInitials}" alt="" style="background:#fff;border-radius:10px;max-width:200px;width:100%;display:block;margin-bottom:8px">` : ""}
-      <canvas id="aInit" class="sig" style="height:110px;max-width:340px"></canvas>
-      <div class="actions" style="margin-top:8px"><button class="small ghost" id="aInitClear">Clear</button><button class="small primary" id="aInitSave" disabled>Save initials</button></div>
-      <label style="display:flex;gap:12px;align-items:center;color:var(--fg)"><input id="printSigned" type="checkbox" style="width:26px;height:26px" ${settings.printWithSignature === false ? "" : "checked"}> Put my signature and initials on contracts I print</label>
-      <div id="aMsg"></div></div>
-    <div class="card"><button data-go="formEditor" style="width:100%">Edit consent form</button>
-      <button id="printBlank" style="width:100%;margin-top:12px">Print blank contract (wet ink)</button></div>
-    <div class="card"><button data-go="backup" style="width:100%">Backup, restore and change PIN</button></div>
-    <div class="card"><strong>Erase test data</strong>
-      <p class="mute" style="font-size:16px">Deletes every client, appointment, session, signed contract and countersigned copy on this device. Your settings, form wording, flash designs and saved signature are kept.</p>
-      <button class="danger" id="eraseAll">Erase all client data…</button></div>
-    <div class="card"><button data-go="aftercare" style="width:100%">Manage aftercare templates</button></div>`,
-  bind(root) {
-    $("#printBlank", root).onclick = () => Consent.printPaper();
-    Mailer.bindSettings(root);
-    CalendarSettings.bindSettings(root);
-    SyncUI.bindSettings(root);
-    AppVersion.bind(root);
-    $("#eraseAll", root).onclick = async () => {
-      const n = DB.all("client").length;
-      if (!n) { alert("There are no clients to erase."); return; }
-      const appointments = DB.all("appointment").length;
-      const t = prompt(`This permanently deletes ${n} client(s), ${appointments} appointment(s), and ALL their paperwork. Type ERASE to confirm.`);
-      if (t !== "ERASE") return;
-      await eraseAllClientData(); go("settings");
-    };
-    const wirePad = (canvasId, saveId, clearId, key, label) => {
-      const btn = $(saveId, root), pad = Consent.sigPad($(canvasId, root), ok => { btn.disabled = !ok; }, { transparent: true });
-      $(clearId, root).onclick = () => pad.clear();
-      btn.onclick = async () => { settings = { ...settings, [key]: pad.data() }; await DB.put(settings); go("settings"); };
-    };
-    wirePad("#aSig", "#aSigSave", "#aSigClear", "artistSignature"); wirePad("#aInit", "#aInitSave", "#aInitClear", "artistInitials");
-    $("#printSigned", root).onchange = async e => { settings = { ...settings, printWithSignature: e.target.checked }; await DB.put(settings); };
-    $("#saveSettings", root).onclick = async () => {
-      const minAge = Math.max(0, Math.min(99, parseInt($("#minAge", root).value, 10) || 18));
-      const autoLockMin = Math.max(1, Math.min(120, parseInt($("#autoLock", root).value, 10) || 5));
-      settings = { ...CalendarSettings.readSettings(root, Pricing.readSettings(root, Mailer.readSettings(root, settings))), business: $("#biz", root).value.trim() || "Dirtpickle", artistName: $("#artist", root).value.trim() || DEFAULTS.artistName, minAge, autoLockMin };
-      await DB.put(settings);
-      await publishPublic();
-      $("#setMsg", root).textContent = "Saved";
-    };
-  }
-};
+SettingsMenu.register(screens);
 
 /* ---------- boot ---------- */
 (async () => {

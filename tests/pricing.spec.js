@@ -14,9 +14,11 @@ test('finished timed session offers a suggestion without overwriting price', asy
   await newClient(page, 'Pricing Client');
   await goHome(page);
   await page.locator('[data-go="settings"]').click();
+  await page.locator('[data-go="settingsBusiness"]').click();
   await page.locator('#hourlyRate').fill('120');
   await page.locator('#priceRound').fill('5');
   await page.locator('#saveSettings').click();
+  await page.locator('[data-go="settings"]').click();
   await page.locator('[data-go="home"]').click();
   await page.locator('[data-go="queue"]').click();
   await page.locator('[data-go="walkin"]').click();

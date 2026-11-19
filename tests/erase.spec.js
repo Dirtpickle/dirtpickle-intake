@@ -19,6 +19,7 @@ test("deletes a client and erases all client data", async ({ page }) => {
   await page.locator('[data-go="clients"]').click();
   await page.locator('[data-go="home"]').click();
   await page.locator('[data-go="settings"]').click();
+  await page.locator('[data-go="settingsDanger"]').click();
   page.once("dialog", dialog => dialog.accept("ERASE"));
   await page.locator("#eraseAll").click();
   await page.locator('[data-go="home"]').click();

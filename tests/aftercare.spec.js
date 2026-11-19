@@ -12,6 +12,7 @@ async function seedSession(page) {
 test("aftercare templates save new versions and keep read-only history", async ({ page }) => {
   await setup(page);
   await page.locator('[data-go="settings"]').click();
+  await page.locator('[data-go="settingsContracts"]').click();
   await page.locator('[data-go="aftercare"]').click();
   await page.locator('[data-go="aftercareEdit"]').click();
   await page.locator("#acTitle").fill("Studio aftercare");

@@ -8,7 +8,7 @@ const AftercareUI = (() => {
     <div class="actions"><button class="primary" id="acSave">Save as version ${Math.max(1, (Aftercare.latest(t.key)?.version || 0) + 1)}</button><button class="ghost" data-go="aftercare">Cancel</button></div></div>
     ${t.key ? `<div class="card"><strong>Read-only history</strong>${Aftercare.versions(t.key).map(v => `<div class="sub" style="margin-top:8px">Version ${v.version} · ${esc(fmtDate(v.updatedAt))}<br>${esc(v.body)}</div>`).join("")}</div>` : ""}`;
 
-  screens.aftercare = { html: () => `${bar("Aftercare templates", { back: "settings" })}
+  screens.aftercare = { html: () => `${bar("Aftercare templates", { back: "settingsContracts" })}
     <div class="card"><div class="actions"><button class="primary" data-go="aftercareEdit">+ New template</button></div>
     ${Aftercare.templates().map(t => `<div class="row"><div class="grow"><strong>${esc(t.title)}</strong><div class="sub">Version ${t.version} · ${esc(fmtDate(t.updatedAt))}</div></div><button class="small" data-ac-edit="${esc(t.key)}">Edit</button><button class="small danger" data-ac-delete="${esc(t.key)}">Delete</button></div>`).join("")}</div>` ,
     bind(root) { root.onclick = async e => { const editKey = e.target.closest("[data-ac-edit]")?.dataset.acEdit; if (editKey) return go("aftercareEdit", { key: editKey });

@@ -151,7 +151,7 @@ const Consent = (() => {
     }
 
     const pages = pdf.getPages();
-    pages.forEach((p, i) => p.drawText(clean(`${d.business} | ${d.tpl.docVersion ? d.tpl.docVersion + " | " : ""}Document ${d.docId} | Page ${i + 1} of ${pages.length}`),
+    pages.forEach((p, i) => p.drawText(clean(`${d.business} | Form v${d.tpl.version || d.tpl.docVersion || "?"} | ${d.tpl.docVersion ? d.tpl.docVersion + " | " : ""}Document ${d.docId} | Page ${i + 1} of ${pages.length}`),
       { x: M, y: 28, size: 8, font, color: GREY }));
     pdf.setTitle(`${d.business} consent - ${c.legalName}`); pdf.setProducer(d.business); pdf.setCreator(d.business);
     return pdf.save();

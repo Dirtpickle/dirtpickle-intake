@@ -99,7 +99,7 @@ const ConsentPaper = (() => {
     ui.yesNo("Aftercare instructions provided"); ui.yesNo("Final procedure photograph taken"); ui.text("Additional notes / complications:", { f: ui.bold, size: 10, gap: 4 }); ui.line(); ui.line(); ui.line("Final payment collected: $"); ui.line("Artist initials:", "");
     if (artistInit) ui.page().drawImage(artistInit, { x: ui.M + 100, y: ui.y() + 11, width: Math.min(70, artistInit.width), height: Math.min(30, artistInit.height) });
   };
-  const drawFooter = (ui, d, pdf) => { const pages = pdf.getPages(); pages.forEach((p, i) => p.drawText(clean(`${d.business} | ${d.tpl.docVersion ? d.tpl.docVersion + " | " : ""}Page ${i + 1} of ${pages.length}`), { x: ui.M, y: 28, size: 8, font: ui.font, color: ui.colors.grey })); };
+  const drawFooter = (ui, d, pdf) => { const pages = pdf.getPages(); pages.forEach((p, i) => p.drawText(clean(`${d.business} | Form v${d.tpl.version || d.tpl.docVersion || "?"} | ${d.tpl.docVersion ? d.tpl.docVersion + " | " : ""}Page ${i + 1} of ${pages.length}`), { x: ui.M, y: 28, size: 8, font: ui.font, color: ui.colors.grey })); };
 
   async function buildPaperPdf(d) {
     const { PDFDocument, StandardFonts } = PDFLib; const pdf = await PDFDocument.create();
@@ -108,7 +108,7 @@ const ConsentPaper = (() => {
     ui.newPage(); drawHeader(ui, d); drawClient(ui, d); await drawSections(ui, d);
     ui.heading("Client signature"); ui.text(d.tpl.agreement.join(" "), { f: bold, size: 9.5, gap: 6 }); const c = d.client || {};
     ui.line("Signature:"); ui.line("Printed name:", c.legalName); ui.line("Date:"); ui.line("Time:"); drawArtistBlocks(ui, d, artistSig, artistInit);
-    drawFooter(ui, d, pdf); pdf.setTitle(`${d.business} contract (print)${d.prefill && d.client.legalName ? " - " + d.client.legalName : ""}`); pdf.setSubject(d.prefill ? "Pre-filled from digital consent" : "Blank wet-ink contract"); return pdf.save();
+    drawFooter(ui, d, pdf); pdf.setTitle(`${d.business} contract (print)${d.prefill && d.client.legalName ? " - " + d.client.legalName : ""}`); pdf.setSubject(`${d.prefill ? "Pre-filled from digital consent" : "Blank wet-ink contract"} | Form v${d.tpl.version || d.tpl.docVersion || "?"}`); return pdf.save();
   }
   return { buildPaperPdf };
 })();

@@ -35,6 +35,8 @@ const AftercarePdf = (() => {
       if (line) current.drawText(line, { x: 54, y, size: 12, font });
       y -= line ? 18 : 10;
     }
+    const pages = pdf.getPages();
+    pages.forEach((current, index) => current.drawText(`Form v${data.version} | Page ${index + 1} of ${pages.length}`, { x: 54, y: 28, size: 8, font, color: rgb(.4, .4, .4) }));
     return pdf.save();
   }
 
