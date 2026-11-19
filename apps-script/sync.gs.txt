@@ -1,0 +1,27 @@
+/* Paste these functions into the existing Apps Script relay. The existing doPost must
+   check d.secret === SECRET before calling syncAction(d). The file body is opaque. */
+function syncAction(d) {
+  if (d.action === "sync.get") return syncGet();
+  if (d.action === "sync.put") return syncPut(d);
+  return out({ ok: false, error: "unknown action" });
+}
+
+function syncFile() {
+  const files = DriveApp.getFilesByName("dirtpickle-sync.enc");
+  return files.hasNext() ? files.next() : null;
+}
+
+function syncGet() {
+  const file = syncFile();
+  return out({ ok: true, data: file ? file.getBlob().getDataAsString() : null, version: file ? file.getLastUpdated().getTime() : null });
+}
+
+function syncPut(d) {
+  if (typeof d.sealed !== "string" || d.sealed.length === 0) return out({ ok: false, error: "missing sealed data" });
+  const file = syncFile();
+  const current = file ? file.getLastUpdated().getTime() : null;
+  if ((d.baseVersion ?? null) !== current) return out({ ok: false, error: "conflict" });
+  const next = file || DriveApp.createFile("dirtpickle-sync.enc", "", MimeType.PLAIN_TEXT);
+  next.setContent(d.sealed);
+  return out({ ok: true, version: next.getLastUpdated().getTime() });
+}

@@ -2,7 +2,7 @@
 /* Consent forms, signature, PDF generation, client check-in (kiosk) mode, and the Documents list.
    Signed consent records are write-once: they hold a full snapshot of the wording the client saw. */
 const Consent = (() => {
-  const DEFAULT_PRIVACY = "Your privacy. This app works completely offline. Everything you enter, including your ID details and a photo of your ID, health answers and signature, is saved only on this device and is encrypted. It is not uploaded to any cloud or shared with anyone, and only the artist can open it. Your signed agreement and aftercare instructions will be emailed to the address you give us. That is the only information that leaves this device.";
+  const DEFAULT_PRIVACY = "Your privacy. Your data is stored encrypted on this device. If sync is turned on, an encrypted copy is stored in the owner's Google Drive, which Google cannot read. A forgotten PIN means the data cannot be recovered. Your signed agreement and aftercare instructions will be emailed to the address you give us.";
   const privacyText = () => {
     const text = (K && K.tpl && K.tpl.privacy) || DEFAULT_PRIVACY;
     const relay = K && (K.mode === "intake" ? K.relayConfigured : Mailer.configured(Mailer.relayFromSettings()));

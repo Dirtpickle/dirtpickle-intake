@@ -2,7 +2,7 @@
 /* Dirtpickle intake app: Phase 1 (shell, PIN, local encrypted DB, client intake + search). */
 const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const DEFAULTS = { type: "settings", id: "settings", business: "Dirtpickle", minAge: 18, autoLockMin: 5, backupDays: 7, lastBackupAt: null, artistName: "Dirtpickle (Mike Peterson)", appointmentDurationMin: 120, calendarSync: false, calendarName: "", pricing: { rate: 120, round: 5 } };
+const DEFAULTS = { type: "settings", id: "settings", business: "Dirtpickle", minAge: 18, autoLockMin: 5, backupDays: 7, lastBackupAt: null, artistName: "Dirtpickle (Mike Peterson)", appointmentDurationMin: 120, calendarSync: false, calendarName: "", syncEnabled: false, syncSalt: null, lastSyncAt: null, pricing: { rate: 120, round: 5 } };
 let settings = { ...DEFAULTS };
 
 /* ---------- helpers ---------- */
@@ -139,12 +139,21 @@ async function publishPublic() {
     relayConfigured: Mailer.configured(Mailer.relayFromSettings()), flash, at: new Date().toISOString() });
 }
 let intakeReady = false;
+let syncModulesLoaded = false;
+async function loadSyncModules() {
+  if (syncModulesLoaded) return;
+  for (const src of ["js/sync-relay.js", "js/sync-engine.js", "js/sync-ui.js"]) await new Promise((resolve, reject) => {
+    const script = document.createElement("script"); script.src = src; script.onload = resolve; script.onerror = reject; document.body.appendChild(script);
+  });
+  syncModulesLoaded = true;
+}
 async function afterUnlock() {
   Nav.unlock();
   await Flash.migrateAll();
   const saved = DB.get("settings") || {};
   settings = { ...DEFAULTS, ...saved, pricing: { ...DEFAULTS.pricing, ...(saved.pricing || {}) } };
   settings = await Events.migrateLegacy(settings);
+  await loadSyncModules();
   await Consent.init();
   await Aftercare.init();
   await publishPublic(); intakeReady = true;
@@ -503,6 +512,8 @@ screens.settings = {
       ${Mailer.settingsHtml()}
       <hr><strong>Calendar sync</strong><p class="mute" style="font-size:16px">Appointments use the same Apps Script relay as email. Calendar events contain only the client's first name and tattoo summary.</p>
       ${CalendarSettings.settingsHtml()}
+      ${SyncUI.settingsHtml()}
+      ${AppVersion.html()}
       <div class="actions"><button class="primary" id="saveSettings">Save settings</button><span id="setMsg" class="mute" style="align-self:center"></span></div></div>
     <div class="card"><strong>Artist signature and initials</strong>
       <p class="mute" style="font-size:16px">Used on contracts you print and when you countersign a signed contract. Stored encrypted. Never available to the intake side.</p>
@@ -527,6 +538,8 @@ screens.settings = {
     $("#printBlank", root).onclick = () => Consent.printPaper();
     Mailer.bindSettings(root);
     CalendarSettings.bindSettings(root);
+    SyncUI.bindSettings(root);
+    AppVersion.bind(root);
     $("#eraseAll", root).onclick = async () => {
       const n = DB.all("client").length;
       if (!n) { alert("There are no clients to erase."); return; }

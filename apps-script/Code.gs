@@ -12,6 +12,7 @@ function doPost(e) {
   try {
     const d = JSON.parse(e.postData.contents);
     if (d.secret !== SECRET) return out({ ok: false, error: "unauthorized" });
+    if (d.action && String(d.action).indexOf("sync.") === 0) return syncAction(d);
     if (d.action) return calendarAction(d);
     if (!/^\S+@\S+\.\S+$/.test(d.to || "")) return out({ ok: false, error: "bad address" });
     if (!d.pdfBase64) return out({ ok: false, error: "no pdf" });
@@ -53,4 +54,30 @@ function calendarAction(d) {
 
 function out(o) {
   return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function syncAction(d) {
+  if (d.action === "sync.get") return syncGet();
+  if (d.action === "sync.put") return syncPut(d);
+  return out({ ok: false, error: "unknown action" });
+}
+
+function syncFile() {
+  const files = DriveApp.getFilesByName("dirtpickle-sync.enc");
+  return files.hasNext() ? files.next() : null;
+}
+
+function syncGet() {
+  const file = syncFile();
+  return out({ ok: true, data: file ? file.getBlob().getDataAsString() : null, version: file ? file.getLastUpdated().getTime() : null });
+}
+
+function syncPut(d) {
+  if (typeof d.sealed !== "string" || d.sealed.length === 0) return out({ ok: false, error: "missing sealed data" });
+  const file = syncFile();
+  const current = file ? file.getLastUpdated().getTime() : null;
+  if ((d.baseVersion ?? null) !== current) return out({ ok: false, error: "conflict" });
+  const next = file || DriveApp.createFile("dirtpickle-sync.enc", "", MimeType.PLAIN_TEXT);
+  next.setContent(d.sealed);
+  return out({ ok: true, version: next.getLastUpdated().getTime() });
 }
