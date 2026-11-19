@@ -1,5 +1,5 @@
 const { test, expect } = require("@playwright/test");
-const { setup, newClient, makeSignature, answerContract, unlock } = require("./helpers/app");
+const { setup, newClient, makeSignature, answerContract, unlock, openMoreTarget } = require("./helpers/app");
 
 async function completeContract(page) {
   await page.locator("#startPaper").click();
@@ -20,7 +20,7 @@ test("requires contract answers and creates a locked PDF with matching SHA-256",
   await page.locator("#kStaff").click();
   await page.locator("#kStaff").click();
   await unlock(page);
-  await page.locator('[data-go="documents"]').click();
+  await openMoreTarget(page, "documents");
   await page.locator('[data-go="doc"]').click();
   await page.getByRole("button", { name: "Verify integrity" }).click();
   await expect(page.locator("#dMsg")).toContainText("matches the fingerprint");
@@ -52,7 +52,7 @@ test("countersigns a consent and keeps the final PDF locked", async ({ page }) =
     if (await page.locator("#kStaff").count()) await page.locator("#kStaff").click();
   }
   await unlock(page);
-  await page.locator('[data-go="documents"]').click();
+  await openMoreTarget(page, "documents");
   await page.locator('[data-go="doc"]').click();
   await page.once("dialog", dialog => dialog.accept());
   await page.locator("#cSign").click();

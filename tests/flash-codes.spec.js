@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { setup } = require('./helpers/app');
+const { setup, openMoreTarget } = require('./helpers/app');
 
 test('normalizes and finds forgiving flash codes', async ({ page }) => {
   await setup(page);
@@ -10,7 +10,7 @@ test('normalizes and finds forgiving flash codes', async ({ page }) => {
 test('rejects duplicate codes and skips existing range entries', async ({ page }) => {
   await setup(page);
   await page.evaluate(() => DB.put({ type: 'flash', id: 'existing', code: '1BF26', name: 'Existing', status: 'available', kind: 'repeatable' }));
-  await page.locator('[data-go="flash"]').click();
+  await openMoreTarget(page, "flash");
   await page.locator('[data-go="flashAdd"]').click();
   await page.locator('#f_code').fill('1-BF-26');
   await page.locator('#fSave').click();

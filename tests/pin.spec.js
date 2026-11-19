@@ -1,5 +1,5 @@
 const { test, expect } = require("@playwright/test");
-const { setup, unlock, lock, enterPin } = require("./helpers/app");
+const { setup, unlock, lock, enterPin, openMoreTarget } = require("./helpers/app");
 
 test("sets up, unlocks, rejects a wrong PIN, and locks", async ({ page }) => {
   await setup(page);
@@ -13,7 +13,7 @@ test("sets up, unlocks, rejects a wrong PIN, and locks", async ({ page }) => {
 
 test("auto-locks after inactivity", async ({ page }) => {
   await setup(page);
-  await page.locator('[data-go="settings"]').click();
+  await openMoreTarget(page, "settings");
   await page.locator('[data-go="settingsBusiness"]').click();
   await page.locator("#autoLock").fill("1");
   await page.locator("#saveSettings").click();

@@ -180,8 +180,9 @@ document.addEventListener("visibilitychange", () => {
   if (!document.hidden && DB.isUnlocked() && Date.now() - lastActive > settings.autoLockMin * 60000) lock();
 });
 
-/* ---------- Home ---------- */
-screens.home = {
+/* ---------- Legacy home registration moved to js/home.js ---------- */
+/*
+screens.homeLegacy = {
   html: () => `${bar()}
     ${(() => { const n = Intake.takeNotice(); return n ? `<div class="banner ok">${esc(n)}.</div>` : ""; })()}
     ${Backup.overdue() ? `<div class="banner warn" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><span style="flex:1">${esc(Backup.overdue())} Make a backup.</span><button class="small" data-go="backup">Back up now</button></div>` : ""}
@@ -197,6 +198,7 @@ screens.home = {
       <button class="tile" data-go="settings">SETTINGS<small>Business, age, auto-lock</small></button>
     </div>`
 };
+*/
 
 /* ---------- Search (returning) and list ---------- */
 function resultRows(list) {
@@ -420,8 +422,9 @@ async function eraseAllClientData() {
   for (const t of ["client", ...CLIENT_TYPES]) for (const r of DB.all(t)) await DB.remove(r.id, { force: true });
 }
 
-/* ---------- Client profile ---------- */
-screens.profile = {
+/* ---------- Legacy profile registration moved to js/profile.js ---------- */
+/*
+screens.profileLegacy = {
   html({ id }) {
     const c = DB.get(id);
     if (!c) return `${bar("Client", { back: "home" })}<div class="banner bad">Client not found.</div>`;
@@ -501,6 +504,7 @@ screens.profile = {
     };
   }
 };
+*/
 
 /* ---------- Settings ---------- */
 SettingsMenu.register(screens);

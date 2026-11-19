@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { setup, newClient, goHome } = require('./helpers/app');
+const { setup, newClient, goHome, openMoreTarget } = require('./helpers/app');
 
 test('pricing suggestion rounds to the nearest configured amount', async ({ page }) => {
   await page.goto('/');
@@ -13,12 +13,12 @@ test('finished timed session offers a suggestion without overwriting price', asy
   await page.evaluate(async () => Events.create({ name: 'Hourly pricing', date: '2026-11-27', hourlyApplies: true }));
   await newClient(page, 'Pricing Client');
   await goHome(page);
-  await page.locator('[data-go="settings"]').click();
+  await openMoreTarget(page, "settings");
   await page.locator('[data-go="settingsBusiness"]').click();
   await page.locator('#hourlyRate').fill('120');
   await page.locator('#priceRound').fill('5');
   await page.locator('#saveSettings').click();
-  await page.locator('[data-go="settings"]').click();
+  await openMoreTarget(page, "settings");
   await page.locator('[data-go="home"]').click();
   await page.locator('[data-go="queue"]').click();
   await page.locator('[data-go="walkin"]').click();

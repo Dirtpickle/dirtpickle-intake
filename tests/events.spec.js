@@ -1,8 +1,9 @@
 const { test, expect } = require('@playwright/test');
-const { setup, newClient, goHome, lock, unlock } = require('./helpers/app');
+const { setup, newClient, goHome, lock, unlock, openMore } = require('./helpers/app');
 
 test('creates an event from home and a second event ends the first', async ({ page }) => {
   await setup(page);
+  await openMore(page);
   await expect(page.locator('[data-go="events"]')).toContainText('No active event');
   await page.locator('[data-go="events"]').click();
   await page.locator('[data-go="eventNew"]').click();
@@ -22,6 +23,7 @@ test('creates an event from home and a second event ends the first', async ({ pa
   await expect(page.locator('.card')).toContainText('Black Friday Flash');
   await expect(page.locator('.card')).toContainText('Ended');
   await page.locator('[data-go="home"]').click();
+  await openMore(page);
   await expect(page.locator('[data-go="events"]')).toContainText('Friday the 13th');
 });
 

@@ -1,5 +1,5 @@
 const { test, expect } = require("@playwright/test");
-const { setup } = require("./helpers/app");
+const { setup, openMoreTarget } = require("./helpers/app");
 
 async function seedSession(page) {
   return page.evaluate(async () => {
@@ -11,7 +11,7 @@ async function seedSession(page) {
 
 test("aftercare templates save new versions and keep read-only history", async ({ page }) => {
   await setup(page);
-  await page.locator('[data-go="settings"]').click();
+  await openMoreTarget(page, "settings");
   await page.locator('[data-go="settingsContracts"]').click();
   await page.locator('[data-go="aftercare"]').click();
   await page.locator('[data-go="aftercareEdit"]').click();

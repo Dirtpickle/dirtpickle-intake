@@ -32,6 +32,7 @@ test("adds, restores, and erases session photos", async ({ page }) => {
 
   await page.evaluate(clientId => go("profile", { id: clientId }), await page.evaluate(() => DB.all("client")[0].id));
   page.once("dialog", dialog => dialog.accept());
+  await page.locator("#profileMoreToggle").click();
   await page.locator("#delClient").click();
   await expect(page.locator("#results")).toContainText("No matches");
   expect(await page.evaluate(() => DB.all("photo").length)).toBe(0);

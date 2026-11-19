@@ -1,8 +1,8 @@
 const { test, expect } = require('@playwright/test');
-const { setup } = require('./helpers/app');
+const { setup, openMoreTarget } = require('./helpers/app');
 test('adds a range of text-only flash codes', async ({ page }) => {
   await setup(page);
-  await page.locator('[data-go="flash"]').click();
+  await openMoreTarget(page, "flash");
   await page.locator('[data-go="flashRange"]').click();
   await page.locator('#f_from').fill('1');
   await page.locator('#f_to').fill('5');

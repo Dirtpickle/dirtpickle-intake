@@ -13,6 +13,7 @@ test("creates an appointment and sends a private calendar upsert", async ({ page
     await DB.put({ ...s, emailRelayUrl: "https://relay.test/exec", relaySecret: "secret", calendarSync: true });
   });
   await newClient(page);
+  await page.locator("#profileMoreToggle").click();
   await page.getByRole("button", { name: "Book appointment" }).click();
   await page.locator("#apptClientSearch").fill("Alex");
   await page.locator("[data-client]").click();
@@ -29,6 +30,7 @@ test("creates an appointment and sends a private calendar upsert", async ({ page
 test("converts an appointment to a session", async ({ page }) => {
   await setup(page);
   await newClient(page, "Jamie Example");
+  await page.locator("#profileMoreToggle").click();
   await page.getByRole("button", { name: "Book appointment" }).click();
   await page.locator("#apptClientSearch").fill("Jamie");
   await page.locator("[data-client]").click();

@@ -38,6 +38,7 @@ test("browser Back restores route parameters", async ({ page }) => {
   await page.locator('[data-go="home"]').click();
   await page.locator('[data-go="clients"]').click();
   await page.locator('[data-go="profile"]').first().click();
+  await page.locator("#profileMoreToggle").click();
   await page.locator('[data-go="clientForm"]').click();
   await expect(page.locator("#legalName")).toHaveValue("Parameter Client");
 
@@ -46,4 +47,22 @@ test("browser Back restores route parameters", async ({ page }) => {
 
   await page.goForward();
   await expect(page.locator("#legalName")).toHaveValue("Parameter Client");
+});
+
+test("home groups secondary destinations under More and profile actions collapse", async ({ page }) => {
+  await setup(page);
+  await expect(page.locator(".grid > .tile")).toHaveCount(6);
+  for (const target of ["clientForm", "returning", "clients", "queue", "appointments"]) {
+    await expect(page.locator(`[data-go="${target}"]`)).toHaveCount(1);
+  }
+  await page.locator('[data-go="more"]').click();
+  for (const target of ["flash", "events", "documents", "settings"]) {
+    await expect(page.locator(`[data-go="${target}"]`)).toHaveCount(1);
+  }
+  await page.locator('[data-go="home"]').click();
+  await newClient(page, "Grouped Actions Client");
+  await expect(page.locator("#profileMoreActions")).toBeHidden();
+  await page.locator("#profileMoreToggle").click();
+  await expect(page.locator("#profileMoreActions")).toBeVisible();
+  await expect(page.locator("#delClient")).toBeVisible();
 });

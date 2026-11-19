@@ -1,26 +1,26 @@
 const { test, expect } = require("@playwright/test");
-const { setup } = require("./helpers/app");
+const { setup, openMoreTarget } = require("./helpers/app");
 
 test("settings menu has five entries and each opens", async ({ page }) => {
   await setup(page);
-  await page.locator('[data-go="settings"]').click();
+  await openMoreTarget(page, "settings");
   const entries = page.locator(".settings-menu > button");
   await expect(entries).toHaveCount(5);
   for (const target of ["settingsBusiness", "settingsContracts", "settingsGoogle", "backup", "settingsDanger"]) {
     await page.locator(`[data-go="${target}"]`).click();
     await expect(page.locator("header h1")).toBeVisible();
-    await page.locator('[data-go="settings"]').click();
+    await openMoreTarget(page, "settings");
   }
 });
 
 test("business settings save and Google connection has one relay URL and secret", async ({ page }) => {
   await setup(page);
-  await page.locator('[data-go="settings"]').click();
+  await openMoreTarget(page, "settings");
   await page.locator('[data-go="settingsBusiness"]').click();
   await page.locator("#biz").fill("Saved Studio");
   await page.locator("#saveSettings").click();
   await expect.poll(() => page.evaluate(() => DB.get("settings").business)).toBe("Saved Studio");
-  await page.locator('[data-go="settings"]').click();
+  await openMoreTarget(page, "settings");
   await page.locator('[data-go="settingsGoogle"]').click();
   await expect(page.locator("#relayUrl")).toHaveCount(1);
   await expect(page.locator("#relaySecret")).toHaveCount(1);

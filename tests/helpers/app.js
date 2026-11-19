@@ -61,6 +61,20 @@ async function goHome(page) {
   await page.locator('[data-go="home"]').click();
 }
 
+async function openMore(page) {
+  await page.locator('[data-go="more"]').click();
+}
+
+async function openMoreTarget(page, target) {
+  if (await page.locator(`[data-go="${target}"]`).count()) {
+    await page.locator(`[data-go="${target}"]`).click();
+    return;
+  }
+  if (await page.locator('[data-go="home"]').count()) await page.locator('[data-go="home"]').click();
+  await openMore(page);
+  await page.locator(`[data-go="${target}"]`).click();
+}
+
 async function answerContract(page) {
   await page.locator(".yn [data-v='no']").evaluateAll(buttons => buttons.forEach(b => b.click()));
   await page.locator(".choice button").evaluateAll(buttons => buttons.filter((b, i) => i === 0 || !b.parentElement.querySelector(".primary")).forEach(b => b.click()));
@@ -78,4 +92,4 @@ async function answerContract(page) {
   });
 }
 
-module.exports = { enterPin, setup, unlock, lock, newClient, makeSignature, answerContract, goHome };
+module.exports = { enterPin, setup, unlock, lock, newClient, makeSignature, answerContract, goHome, openMore, openMoreTarget };

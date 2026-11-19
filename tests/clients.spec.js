@@ -78,6 +78,7 @@ test("saves a generated license photo and does not ask again", async ({ page }) 
   await page.locator("#dob").fill("1990-01-01");
   await fillGeneratedPhoto(page);
   await page.locator("#saveClient").click();
+  await page.locator("#profileMoreToggle").click();
   await page.getByRole("button", { name: "Review / edit info" }).click();
   await expect(page.getByText(/ID photo on file/)).toBeVisible();
   await expect(page.locator("#skipIdPhoto")).toHaveCount(0);
