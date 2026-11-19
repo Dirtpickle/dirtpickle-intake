@@ -81,3 +81,10 @@ function syncPut(d) {
   next.setContent(d.sealed);
   return out({ ok: true, version: next.getLastUpdated().getTime() });
 }
+
+/* Run this once from the editor (select authorizeAll, click Run) to approve Gmail, Calendar and Drive in one step. */
+function authorizeAll() {
+  MailApp.getRemainingDailyQuota();
+  CalendarApp.getDefaultCalendar();
+  DriveApp.getRootFolder();
+}
