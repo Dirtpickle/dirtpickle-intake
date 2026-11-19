@@ -18,7 +18,7 @@ const SyncUI = (() => {
   function onHtml(s) {
     return `<p><b>Sync is on.</b> Last synced: ${esc(last(s.lastSyncAt))}.</p>
       <div class="actions"><button id="syncNow" type="button" class="primary">Sync now</button></div><div id="syncResult" class="sub"></div>
-      <div class="actions"><button id="syncShowCode" type="button" class="small ghost">Show pairing code for another device</button></div><div id="syncCodeBox"></div>`;
+      <div class="actions"><button id="syncShowCode" type="button" class="small ghost">Show pairing code for another device</button><button id="syncReset" type="button" class="small ghost">Turn off sync on this device</button></div><div id="syncCodeBox"></div>`;
   }
   function settingsHtml() {
     const s = DB.get("settings") || {};
@@ -66,6 +66,11 @@ const SyncUI = (() => {
     const on = (id, fn) => $(id, root)?.addEventListener("click", () => fn(root).catch(e => fail(root, e)));
     on("#syncTurnOn", turnOn); on("#syncPairGo", pair); on("#syncNow", sync);
     $("#syncPairOpen", root)?.addEventListener("click", () => { $("#syncPairBox", root).hidden = false; $("#syncCodeIn", root).focus(); });
+    $("#syncReset", root)?.addEventListener("click", async () => {
+      if (!confirm("Turn off sync on this device? Your data stays here. You can turn sync on again and get a new pairing code.")) return;
+      settings = { ...settings, syncSalt: undefined, syncCode: undefined, syncEnabled: false, lastSyncAt: undefined };
+      await DB.put(settings); go("settingsGoogle");
+    });
     $("#syncShowCode", root)?.addEventListener("click", () => showCode(root, DB.get("settings") || {}));
   }
   return { settingsHtml, bindSettings };
