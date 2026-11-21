@@ -62,3 +62,18 @@ test("the intake boot path does not load SyncEngine", async ({ page }) => {
   expect(await intake.evaluate(() => typeof SyncEngine)).toBe("undefined");
   await intake.close();
 });
+
+test("sync carries the artist signature and initials to the other device", async ({ browser }) => {
+  const state = { data: null, version: 0, conflict: false };
+  const a = await browser.newPage(); const b = await browser.newPage();
+  await relay(a, state); await relay(b, state);
+  await setup(a); const kit = await a.evaluate(() => SyncSeal.newKit());
+  await configure(a, kit.salt);
+  await a.evaluate(async () => DB.put({ ...DB.get("settings"), artistSignature: "data:image/png;base64,SIG", artistInitials: "data:image/png;base64,INI", artistMarksAt: new Date().toISOString() }));
+  await a.evaluate(() => SyncEngine.run("123456"));
+  expect(state.data).not.toContain("SIG");
+  await setup(b); await configure(b, kit.salt);
+  await b.evaluate(() => SyncEngine.run("123456"));
+  const got = await b.evaluate(() => ({ s: DB.get("settings").artistSignature, i: DB.get("settings").artistInitials, relay: DB.get("settings").emailRelayUrl }));
+  expect(got).toEqual({ s: "data:image/png;base64,SIG", i: "data:image/png;base64,INI", relay: "https://relay.test/exec" });
+});

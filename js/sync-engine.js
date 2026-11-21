@@ -23,13 +23,16 @@ const SyncEngine = (() => {
     const settings = DB.get("settings") || {};
     if (!settings.syncSalt) throw new Error("Sync is not turned on on this device. Turn it on in Settings first.");
     const remote = await SyncRelay.get();
-    const incoming = remote.data ? await SyncSeal.open(remote.data, pin, settings.syncSalt) : [];
-    const result = await applyMerge(incoming);
-    const sealed = await SyncSeal.seal(packageRecords(), pin, settings.syncSalt);
+    const opened = remote.data ? await SyncSeal.open(remote.data, pin, settings.syncSalt) : [];
+    const { marks, rest } = SyncMarks.split(opened);
+    const result = await applyMerge(rest);
+    await SyncMarks.apply(marks);
+    const extra = SyncMarks.record();
+    const sealed = await SyncSeal.seal(extra ? packageRecords().concat(extra) : packageRecords(), pin, settings.syncSalt);
     const size = new Blob([sealed]).size;
     if (size > MAX_BYTES) throw new Error(`Sync package is ${Math.ceil(size / 1024 / 1024)} MB, over the 8 MB limit.`);
     await SyncRelay.put(sealed, remote.version);
-    await DB.put({ ...settings, lastSyncAt: new Date().toISOString() });
+    await DB.put({ ...(DB.get("settings") || settings), lastSyncAt: new Date().toISOString() });
     return summary(result, packageRecords().length);
   }
 

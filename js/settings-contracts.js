@@ -14,7 +14,7 @@ const SettingsContracts = (() => {
   function wirePad(root, canvasId, saveId, clearId, key) {
     const button = $(saveId, root), pad = Consent.sigPad($(canvasId, root), ok => { button.disabled = !ok; }, { transparent: true });
     $(clearId, root).onclick = () => pad.clear();
-    button.onclick = async () => { settings = { ...settings, [key]: pad.data() }; await DB.put(settings); go("settingsContracts"); };
+    button.onclick = async () => { settings = { ...settings, [key]: pad.data(), artistMarksAt: new Date().toISOString() }; await DB.put(settings); go("settingsContracts"); };
   }
 
   screens.settingsContracts = {
