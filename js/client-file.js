@@ -55,7 +55,7 @@ const ClientFile = (() => {
     lines.push("PHOTOS", `Photo count: ${data.photos.length}`);
     for (const p of data.photos) lines.push(`${p.kind || "Photo"}: ${date(p.createdAt)}${p.note ? ` · ${p.note}` : ""}`);
     lines.push("", "SIGNED CONTRACTS");
-    for (const d of data.consents) lines.push(`${d.template && d.template.title ? d.template.title : "Signed contract"}: ${date(d.signedAt)} · countersigned: ${DB.get("cs-" + d.id) ? "yes" : "no"} · SHA-256: ${(d.sha256 || "").slice(0, 12)} · emailed: ${d.emailStatus || "not-sent"}`);
+    for (const d of data.consents) lines.push(`${d.template && d.template.title ? d.template.title : "Signed contract"} v${d.template?.version || "?"} (${d.short ? "short" : "full"}): ${date(d.signedAt)} · countersigned: ${DB.get("cs-" + d.id) ? "yes" : "no"} · SHA-256: ${(d.sha256 || "").slice(0, 12)} · emailed: ${d.emailStatus || "not-sent"}`);
     if (data.appointments.length) lines.push("", `Appointments on file: ${data.appointments.length}`);
     return lines;
   }

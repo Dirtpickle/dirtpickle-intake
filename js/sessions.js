@@ -69,7 +69,7 @@ const Sessions = (() => {
     const s = DB.get(b.dataset.id); if (!s) return;
     if (b.dataset.act === "confirmid") { await IdConfirm.open(s.clientId); go("queue"); return; }
     if (b.dataset.act === "paper") {
-      const r = Consent.start(s.clientId, s.id);
+      const r = await Consent.start(s.clientId, s.id);
       if (r.error) { alert(r.error); return; }
       await save(s, { status: "paperwork" }); go("kPrivacy");
     } else if (b.dataset.act === "start") { await startTattoo(s); go("session", { id: s.id }); }

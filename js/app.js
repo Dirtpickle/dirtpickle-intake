@@ -2,7 +2,7 @@
 /* Dirtpickle intake app: Phase 1 (shell, PIN, local encrypted DB, client intake + search). */
 const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const DEFAULTS = { type: "settings", id: "settings", business: "Dirtpickle", minAge: 18, autoLockMin: 5, backupDays: 7, lastBackupAt: null, artistName: "Dirtpickle (Mike Peterson)", appointmentDurationMin: 120, calendarSync: false, calendarName: "", syncEnabled: false, syncSalt: null, lastSyncAt: null, pricing: { rate: 120, round: 5 } };
+const DEFAULTS = { type: "settings", id: "settings", business: "Dirtpickle", minAge: 18, autoLockMin: 5, backupDays: 7, lastBackupAt: null, artistName: "Dirtpickle (Mike Peterson)", appointmentDurationMin: 120, calendarSync: false, calendarName: "", syncEnabled: false, syncSalt: null, lastSyncAt: null, allowShortReturning: false, pricing: { rate: 120, round: 5 } };
 let settings = { ...DEFAULTS };
 
 /* ---------- helpers ---------- */
@@ -158,6 +158,7 @@ async function afterUnlock() {
   settings = { ...DEFAULTS, ...saved, pricing: { ...DEFAULTS.pricing, ...(saved.pricing || {}) } };
   settings = await Events.migrateLegacy(settings);
   await loadSyncModules();
+  await loadProReturningModules();
   await Consent.init();
   await Aftercare.init();
   await publishPublic(); intakeReady = true;
@@ -166,6 +167,14 @@ async function afterUnlock() {
   try { await CalendarSync.retryAll(); } catch (_) {}
   lastActive = Date.now();
   go("home", {}, { replace: true });
+}
+let proReturningModulesLoaded = false;
+async function loadProReturningModules() {
+  if (proReturningModulesLoaded) return;
+  for (const src of ["js/client-match.js", "js/returning-consent.js"]) await new Promise((resolve, reject) => {
+    const script = document.createElement("script"); script.src = src; script.onload = resolve; script.onerror = reject; document.body.appendChild(script);
+  });
+  proReturningModulesLoaded = true;
 }
 async function lock() {
   try { if (DB.isUnlocked()) await publishPublic(); } catch (_) {}

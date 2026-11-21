@@ -61,6 +61,7 @@ const Consent = (() => {
     if (d.tpl.intro) text(d.tpl.intro, { size: 9.5, color: GREY, gap: 4 });
     if (d.artist) text(`Tattoo artist: ${d.artist}`, { f: bold, size: 10 });
     text(`Signed ${stamp(d.signedAt)}${d.counter ? `   |   Countersigned ${stamp(d.counter.at)}` : ""}   |   Template: ${d.tpl.name} (v${d.tpl.version})`, { size: 9, color: GREY });
+    if (d.shortReference) text(`This short form refers to prior signed agreement ${d.shortReference.id}, form v${d.shortReference.version}, signed ${stamp(d.shortReference.signedAt)}.`, { size: 9, color: GREY });
 
     heading("Client");
     const c = d.client;
@@ -204,12 +205,13 @@ const Consent = (() => {
   const kbar = title => `<header class="bar"><h1>${esc(settings.business.toUpperCase())}</h1>
     <button class="small ghost" id="kStaff">Artist sign-in</button></header>${title ? `<h2 style="margin:0 0 12px">${esc(title)}</h2>` : ""}`;
 
-  function start(clientId, sessionId) {
+  async function start(clientId, sessionId) {
     const c = DB.get(clientId), tpl = activeTemplate();
     const age = ageOn(c.dob);
     if (age === null || age < settings.minAge) return { error: `Client is under the minimum age of ${settings.minAge} (or has no valid birth date).` };
     if (!tpl) return { error: "No consent template found." };
-    K = { clientId, sessionId: sessionId || null, tpl, answers: {}, contact: { phone: c.phone || "", email: c.email || "", address: c.address || "", emergencyName: c.emergencyName || "", emergencyPhone: c.emergencyPhone || "" } };
+    const returning = await ReturningConsent.status(clientId);
+    K = { clientId, sessionId: sessionId || null, tpl, returning, answers: {}, contact: { phone: c.phone || "", email: c.email || "", address: c.address || "", emergencyName: c.emergencyName || "", emergencyPhone: c.emergencyPhone || "" } };
     return {};
   }
 
@@ -237,14 +239,14 @@ const Consent = (() => {
   }
   const phoneInput = (prefix, key, label, value) => `<label for="${prefix}_${key}">${label}</label><input id="${prefix}_${key}" value="${esc(value)}" type="tel" inputmode="tel"><div class="sub" data-phone-error="${prefix}_${key}"></div>`;
   screens.kPrivacy = {
-    html: () => `${kbar("Before you start")}
+    html: () => `${kbar("Before you start")}${K && K.mode !== "intake" && K.returning ? `<div class="banner warn">${esc(ReturningConsent.banner(K.returning))}</div>` : ""}
       <div class="card agree" style="max-height:none;font-size:22px"><p>${esc(privacyText())}</p></div>
       <label class="qrow check" style="border:0"><input type="checkbox" id="privOk"><span>I have read this privacy notice.</span></label>
       <div class="actions">${K.mode === "intake" ? `<button class="ghost" data-go="iWelcome">Back</button>` : ""}<button class="primary" id="kNext" disabled>Continue</button></div>`,
     bind(root) {
       const b = $("#kNext", root);
       $("#privOk", root).onchange = e => { b.disabled = !e.target.checked; };
-      b.onclick = () => { K.privacyAt = new Date().toISOString(); go(K.mode === "intake" ? (K.scanOnly ? (K.hasFlash ? "iFlash" : "kQuestions") : "iInfo") : "kReview"); };
+      b.onclick = () => { K.privacyAt = new Date().toISOString(); go(K.mode === "intake" ? (K.scanOnly ? (K.hasFlash ? "iFlash" : "kQuestions") : "iInfo") : (K.returning?.mode === "short" ? "kQuestions" : "kReview")); };
     }
   };
 
@@ -418,13 +420,15 @@ const Consent = (() => {
     const docId = crypto.randomUUID();
     const ageAtSigning = ageOn(client.dob);
     const idCheck = (client.idChecks || []).slice(-1)[0] || null;
-    const bytes = await buildPdf({ business: settings.business, minAge: settings.minAge, client, session, tpl: K.tpl, answers: K.answers,
+    const shortReference = K.returning?.mode === "short" ? { id: K.returning.prior.id, version: K.returning.prior.template.version, signedAt: K.returning.prior.signedAt } : null;
+    const bytes = await buildPdf({ business: settings.business, minAge: settings.minAge, client, session, tpl: K.tpl, answers: K.answers, shortReference,
       signature, signedAt: now, docId, ageAtSigning, idCheck, privacy: { text: privacyText(), at: K.privacyAt || now }, artist: settings.artistName });
     const hash = hex(await crypto.subtle.digest("SHA-256", bytes));
     const record = {
       type: "consent", id: docId, locked: true, clientId: client.id, sessionId: session.id, signedAt: now,
       clientSnapshot: { id: client.id, legalName: client.legalName, dob: client.dob, phone: client.phone, email: client.email, address: client.address },
       template: K.tpl, answers: K.answers, signature, idCheck, ageAtSigning, privacy: { text: privacyText(), at: K.privacyAt || now },
+      ...(shortReference ? { short: true, basedOn: shortReference.id, shortReference } : {}),
       pdf: bytesToB64(bytes), sha256: hash, emailStatus: "not-sent", copyTo: K.copy.to || ""
     };
     session.consentId = docId; session.updatedAt = now;
