@@ -10,7 +10,7 @@
      (keep backups). This is app-level encryption in a browser: strong against casual access,
      but not equivalent to iOS Keychain / SQLCipher in a native build. */
 const DB = (() => {
-  const NAME = "dp-app", VER = 3, ITER = 600000;
+  const NAME = "dp-app", VER = 3, ITER = 600000, INBOX_MAX = 300;
   let idb = null, key = null, priv = null; // priv: RSA private key, only while pro side is unlocked
   const cache = new Map(); // id -> decrypted object (only while unlocked)
   let unreadable = 0;
@@ -167,6 +167,7 @@ const DB = (() => {
     async seal(obj) {
       const keys = await run("meta", "readonly", s => s.get("keys"));
       if (!keys) throw new Error("Not set up");
+      if ((await run("inbox", "readonly", s => s.count())) >= INBOX_MAX) throw new Error("The check-in inbox is full. Please ask staff.");
       const pub = await crypto.subtle.importKey("spki", keys.pub, RSA, false, ["encrypt"]);
       const aes = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt"]);
       const iv = crypto.getRandomValues(new Uint8Array(12));

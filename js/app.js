@@ -417,12 +417,13 @@ async function eraseAllClientData() {
 /* ---------- Settings ---------- */
 SettingsMenu.register(screens);
 
-/* ---------- boot ---------- */
-(async () => {
+/* ---------- boot (waits until every script has loaded) ---------- */
+const boot = async () => {
   try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (_) {}
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
   await DB.open();
   if (await DB.hasPin() && DB.isUnlocked()) await Flash.migrateAll();
   if (!(await DB.hasPin())) { showPin("setup1"); return; }
   if (await Intake.available()) { intakeReady = true; Intake.enter(); } else showPin("unlock");
-})();
+};
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot); else boot();

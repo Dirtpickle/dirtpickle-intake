@@ -3,14 +3,14 @@ const { setup, newClient } = require("./helpers/app");
 
 test("creates an appointment and sends a private calendar upsert", async ({ page }) => {
   const requests = [];
-  await page.route("https://relay.test/exec", async route => {
+  await page.route("https://script.google.com/macros/s/x/exec", async route => {
     requests.push(JSON.parse(route.request().postData()));
     await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, calendarEventId: "event-1" }) });
   });
   await setup(page);
   await page.evaluate(async () => {
     const s = DB.get("settings");
-    await DB.put({ ...s, emailRelayUrl: "https://relay.test/exec", relaySecret: "secret", calendarSync: true });
+    await DB.put({ ...s, emailRelayUrl: "https://script.google.com/macros/s/x/exec", relaySecret: "secret", calendarSync: true });
   });
   await newClient(page);
   await page.locator("#profileMoreToggle").click();

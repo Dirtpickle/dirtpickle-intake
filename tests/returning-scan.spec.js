@@ -31,7 +31,7 @@ test("scan-only import matches by license and queues the on-file email", async (
   await page.evaluate(async scan => {
     const client = { type: "client", legalName: "Stored Client", dob: "1990-01-01", licenseNumber: scan.idNumber, phone: "9285550100", email: "stored@example.com", visits: [] };
     await DB.put(client);
-    await DB.put({ type: "settings", id: "settings", emailRelayUrl: "https://relay.test", relaySecret: "secret" });
+    await DB.put({ type: "settings", id: "settings", emailRelayUrl: "https://script.google.com/macros/s/x/exec", relaySecret: "secret" });
     await DB.seal({ submittedAt: new Date().toISOString(), returning: true, scanOnly: true,
       client: { legalName: client.legalName, dob: client.dob, licenseNumber: scan.idNumber }, idCheck: null, idPhoto: null,
       session: { id: crypto.randomUUID(), flashId: null, flashName: "" },

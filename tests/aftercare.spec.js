@@ -50,10 +50,10 @@ test("giving aftercare locks a hashed PDF and preserves the template snapshot", 
 test("aftercare email uses the relay and records failure", async ({ page }) => {
   await setup(page);
   const id = await seedSession(page);
-  await page.evaluate(async () => DB.put({ ...DB.get("settings"), emailRelayUrl: "https://relay.test/exec", relaySecret: "test-secret" }));
+  await page.evaluate(async () => DB.put({ ...DB.get("settings"), emailRelayUrl: "https://script.google.com/macros/s/x/exec", relaySecret: "test-secret" }));
   await page.evaluate(sessionId => Aftercare.give(sessionId, "starter"), id);
   let requestBody;
-  await page.route("https://relay.test/exec", async route => {
+  await page.route("https://script.google.com/macros/s/x/exec", async route => {
     requestBody = JSON.parse(route.request().postData());
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: false, error: "quota" }) });
   });

@@ -18,9 +18,9 @@ test("URL has a Clear button and the secret has a Show/Hide eye", async ({ page 
 test("test email uses the values typed on screen, not only the saved ones", async ({ page }) => {
   await setup(page);
   let hit = "";
-  await page.route("**/typed.test/**", async r => { hit = JSON.parse(r.request().postData()).secret; await r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ ok: true }) }); });
+  await page.route("**/script.google.com/**", async r => { hit = JSON.parse(r.request().postData()).secret; await r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ ok: true }) }); });
   await page.evaluate(() => go("settingsGoogle"));
-  await page.locator("#relayUrl").fill("https://typed.test/exec");
+  await page.locator("#relayUrl").fill("https://script.google.com/macros/s/typed/exec");
   await page.locator("#relaySecret").fill("typed-secret");
   await page.locator("#testEmail").fill("a@example.com");
   await page.locator("#sendTestEmail").click();

@@ -3,7 +3,7 @@ const { setup } = require("./helpers/app");
 
 test("sync card guides main-device setup and second-device pairing", async ({ browser }) => {
   const a = await (await browser.newContext()).newPage(), b = await (await browser.newContext()).newPage();
-  const cfg = p => p.evaluate(async () => { await DB.put({ ...DB.get("settings"), emailRelayUrl: "https://relay.test/exec", relaySecret: "test-secret" }); settings = DB.get("settings"); go("settingsGoogle"); });
+  const cfg = p => p.evaluate(async () => { await DB.put({ ...DB.get("settings"), emailRelayUrl: "https://script.google.com/macros/s/x/exec", relaySecret: "test-secret" }); settings = DB.get("settings"); go("settingsGoogle"); });
   await setup(a); await setup(b); await cfg(a); await cfg(b);
   await expect(a.getByRole("button", { name: /MAIN device/ })).toBeVisible();
   await a.getByRole("button", { name: /MAIN device/ }).click();

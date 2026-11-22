@@ -3,7 +3,7 @@ const { setup } = require("./helpers/app");
 
 async function relaySettings(page) {
   await page.evaluate(async () => {
-    await DB.put({ ...DB.get("settings"), emailRelayUrl: "https://relay.test/exec", relaySecret: "test-secret" });
+    await DB.put({ ...DB.get("settings"), emailRelayUrl: "https://script.google.com/macros/s/x/exec", relaySecret: "test-secret" });
   });
 }
 
@@ -22,7 +22,7 @@ async function document(page) {
 test("sends a text/plain relay request and records sent status", async ({ page }) => {
   await setup(page); await relaySettings(page); await document(page);
   let requestBody;
-  await page.route("https://relay.test/exec", async route => {
+  await page.route("https://script.google.com/macros/s/x/exec", async route => {
     requestBody = JSON.parse(route.request().postData());
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) });
   });
@@ -35,7 +35,7 @@ test("sends a text/plain relay request and records sent status", async ({ page }
 
 test("records a failed relay response without changing the PDF hash", async ({ page }) => {
   await setup(page); await relaySettings(page); await document(page);
-  await page.route("https://relay.test/exec", route => route.fulfill({
+  await page.route("https://script.google.com/macros/s/x/exec", route => route.fulfill({
     status: 200, contentType: "application/json", body: JSON.stringify({ ok: false, error: "quota" })
   }));
   await expect(page.evaluate(() => Mailer.send(DB.get("email-doc")))).rejects.toThrow("quota");
@@ -52,7 +52,7 @@ test("records a failed relay response without changing the PDF hash", async ({ p
 test("queues while offline and retries when online", async ({ page, context }) => {
   await setup(page); await relaySettings(page); await document(page);
   let calls = 0;
-  await page.route("https://relay.test/exec", async route => {
+  await page.route("https://script.google.com/macros/s/x/exec", async route => {
     calls++;
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) });
   });
@@ -99,7 +99,7 @@ test("the contract copy is always emailed: address is required and checked at th
 test("contract email carries the aftercare PDF; aftercare emails do not", async ({ page }) => {
   await setup(page); await relaySettings(page); await document(page);
   const bodies = [];
-  await page.route("https://relay.test/exec", async route => {
+  await page.route("https://script.google.com/macros/s/x/exec", async route => {
     bodies.push(JSON.parse(route.request().postData()));
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) });
   });

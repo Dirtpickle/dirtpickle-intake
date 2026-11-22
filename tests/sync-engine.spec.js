@@ -2,7 +2,7 @@ const { test, expect } = require("@playwright/test");
 const { setup, lock } = require("./helpers/app");
 
 function relay(page, state) {
-  return page.route("**/relay.test/**", async route => {
+  return page.route("**/script.google.com/**", async route => {
     const body = JSON.parse(route.request().postData() || "{}");
     let reply;
     if (body.action === "sync.get") reply = { ok: true, data: state.data, version: state.version };
@@ -16,7 +16,7 @@ function relay(page, state) {
 
 async function configure(page, salt) {
   await page.evaluate(async value => {
-    await DB.put({ ...DB.get("settings"), emailRelayUrl: "https://relay.test/exec", relaySecret: "test-secret", syncSalt: value, syncEnabled: true });
+    await DB.put({ ...DB.get("settings"), emailRelayUrl: "https://script.google.com/macros/s/x/exec", relaySecret: "test-secret", syncSalt: value, syncEnabled: true });
   }, salt);
 }
 
@@ -75,5 +75,5 @@ test("sync carries the artist signature and initials to the other device", async
   await setup(b); await configure(b, kit.salt);
   await b.evaluate(() => SyncEngine.run("123456"));
   const got = await b.evaluate(() => ({ s: DB.get("settings").artistSignature, i: DB.get("settings").artistInitials, relay: DB.get("settings").emailRelayUrl }));
-  expect(got).toEqual({ s: "data:image/png;base64,SIG", i: "data:image/png;base64,INI", relay: "https://relay.test/exec" });
+  expect(got).toEqual({ s: "data:image/png;base64,SIG", i: "data:image/png;base64,INI", relay: "https://script.google.com/macros/s/x/exec" });
 });
