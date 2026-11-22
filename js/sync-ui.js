@@ -17,7 +17,7 @@ const SyncUI = (() => {
   }
   function onHtml(s) {
     return `<p><b>Sync is on.</b> Last synced: ${esc(last(s.lastSyncAt))}.</p>
-      <div class="actions"><button id="syncNow" type="button" class="primary">Sync now</button></div><div id="syncResult" class="sub"></div>
+      <div class="actions"><button id="syncNow" type="button" class="primary">Sync now</button></div><label style="display:flex;gap:12px;align-items:center;color:var(--fg)"><input id="autoSync" type="checkbox" style="width:26px;height:26px" ${s.autoSync === false ? "" : "checked"}> Sync automatically when I unlock</label><div id="syncResult" class="sub"></div>
       <div class="actions"><button id="syncShowCode" type="button" class="small ghost">Show pairing code for another device</button><button id="syncReset" type="button" class="small ghost">Turn off sync on this device</button></div><div id="syncCodeBox"></div>`;
   }
   function settingsHtml() {
@@ -65,6 +65,7 @@ const SyncUI = (() => {
   function bindSettings(root) {
     const on = (id, fn) => $(id, root)?.addEventListener("click", () => fn(root).catch(e => fail(root, e)));
     on("#syncTurnOn", turnOn); on("#syncPairGo", pair); on("#syncNow", sync);
+    $("#autoSync", root)?.addEventListener("change", async e => { await DB.put({ ...(DB.get("settings") || {}), autoSync: e.target.checked }); });
     $("#syncPairOpen", root)?.addEventListener("click", () => { $("#syncPairBox", root).hidden = false; $("#syncCodeIn", root).focus(); });
     $("#syncReset", root)?.addEventListener("click", async () => {
       if (!confirm("Turn off sync on this device? Your data stays here. You can turn sync on again and get a new pairing code.")) return;

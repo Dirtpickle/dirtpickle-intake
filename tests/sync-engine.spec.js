@@ -77,3 +77,22 @@ test("sync carries the artist signature and initials to the other device", async
   const got = await b.evaluate(() => ({ s: DB.get("settings").artistSignature, i: DB.get("settings").artistInitials, relay: DB.get("settings").emailRelayUrl }));
   expect(got).toEqual({ s: "data:image/png;base64,SIG", i: "data:image/png;base64,INI", relay: "https://script.google.com/macros/s/x/exec" });
 });
+
+test("auto sync runs after unlock, can be turned off, and skips quietly when not set up", async ({ browser }) => {
+  const state = { data: null, version: 0, conflict: false };
+  const a = await browser.newPage(); const b = await browser.newPage();
+  await relay(a, state); await relay(b, state);
+  await setup(a); const kit = await a.evaluate(() => SyncSeal.newKit());
+  await configure(a, kit.salt);
+  await a.evaluate(async () => DB.put({ type: "client", id: "client-auto", legalName: "Auto Client" }));
+  expect(await a.evaluate(() => SyncAuto.enabled())).toBe(true);
+  await a.evaluate(() => SyncAuto.run("123456"));
+  expect(state.data).not.toBeNull();
+  await setup(b); await configure(b, kit.salt);
+  await b.evaluate(() => SyncAuto.run("123456"));
+  expect(await b.evaluate(() => DB.get("client-auto").legalName)).toBe("Auto Client");
+  await b.evaluate(async () => DB.put({ ...DB.get("settings"), autoSync: false }));
+  expect(await b.evaluate(() => SyncAuto.enabled())).toBe(false);
+  await b.evaluate(async () => DB.put({ ...DB.get("settings"), autoSync: true, syncSalt: undefined }));
+  expect(await b.evaluate(() => SyncAuto.run("123456"))).toBeNull();
+});

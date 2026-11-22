@@ -131,7 +131,7 @@ async function submitPin(mode, pin) {
   }
   $("#pinErr").textContent = "Checking…";
   const ok = await DB.unlock(pin);
-  if (ok) { pinFails = 0; afterUnlock(); return; }
+  if (ok) { pinFails = 0; afterUnlock(pin); return; }
   pinFails++;
   if (pinFails >= 5) { pinBusyUntil = Date.now() + 30000; pinFails = 0; showPin("unlock", "Too many tries. Wait 30 seconds."); }
   else showPin("unlock", "Wrong PIN");
@@ -146,12 +146,12 @@ let intakeReady = false;
 let syncModulesLoaded = false;
 async function loadSyncModules() {
   if (syncModulesLoaded) return;
-  for (const src of ["js/sync-relay.js", "js/sync-marks.js", "js/sync-engine.js", "js/sync-ui.js"]) await new Promise((resolve, reject) => {
+  for (const src of ["js/sync-relay.js", "js/sync-marks.js", "js/sync-engine.js", "js/sync-auto.js", "js/sync-ui.js"]) await new Promise((resolve, reject) => {
     const script = document.createElement("script"); script.src = src; script.onload = resolve; script.onerror = reject; document.body.appendChild(script);
   });
   syncModulesLoaded = true;
 }
-async function afterUnlock() {
+async function afterUnlock(pin) {
   Nav.unlock();
   await Flash.migrateAll();
   const saved = DB.get("settings") || {};
@@ -167,6 +167,7 @@ async function afterUnlock() {
   try { await CalendarSync.retryAll(); } catch (_) {}
   lastActive = Date.now();
   go("home", {}, { replace: true });
+  if (pin && typeof SyncAuto !== "undefined") SyncAuto.run(pin);
 }
 let proReturningModulesLoaded = false;
 async function loadProReturningModules() {
