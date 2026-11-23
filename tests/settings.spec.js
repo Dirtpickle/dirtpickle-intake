@@ -1,12 +1,12 @@
 const { test, expect } = require("@playwright/test");
 const { setup, openMoreTarget } = require("./helpers/app");
 
-test("settings menu has five entries and each opens", async ({ page }) => {
+test("settings menu has four entries and each opens", async ({ page }) => {
   await setup(page);
   await openMoreTarget(page, "settings");
   const entries = page.locator(".settings-menu > button");
-  await expect(entries).toHaveCount(5);
-  for (const target of ["settingsBusiness", "settingsContracts", "settingsGoogle", "backup", "settingsDanger"]) {
+  await expect(entries).toHaveCount(4);
+  for (const target of ["settingsBusiness", "settingsContracts", "settingsGoogle", "backup"]) {
     await page.locator(`[data-go="${target}"]`).click();
     await expect(page.locator("header h1")).toBeVisible();
     await openMoreTarget(page, "settings");

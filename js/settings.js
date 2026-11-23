@@ -5,8 +5,7 @@ const SettingsMenu = (() => {
     ["settingsBusiness", "Business", "Name, age, pricing and auto-lock"],
     ["settingsContracts", "Signature & contracts", "Signatures, forms, blank contracts and aftercare"],
     ["settingsGoogle", "Google connection", "Email, calendar and Drive sync"],
-    ["backup", "Backup & security", "Back up, restore or change the PIN"],
-    ["settingsDanger", "Danger zone", "Erase test data"]
+    ["backup", "Backup & security", "Back up, restore or change the PIN"]
   ];
 
   function html() {

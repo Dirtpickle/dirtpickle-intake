@@ -105,11 +105,15 @@ const Backup = (() => {
         <div class="actions"><button id="bkVerify">Check backup</button><button class="danger" id="bkRestore">Restore from backup</button></div>
         <div id="bkOut"></div></div>
       ${BackupMergeUI.html()}
+      <div class="card"><button data-go="timesImport" style="width:100%">Import tattoo times</button></div>
       <div class="card"><strong>Change PIN</strong>${pinInput("pinOld", "Current PIN")}${pinInput("pinNew", "New 6-digit PIN")}${pinInput("pinNew2", "New PIN again")}
         <div class="actions"><button id="pinChange">Change PIN</button></div><div id="pinMsg"></div></div>
       <div class="card"><label for="bkDays" style="margin-top:0">Remind me when a backup is older than (days)</label>
         <input id="bkDays" type="number" inputmode="numeric" min="1" max="90" value="${settings.backupDays}">
-        <div class="actions"><button id="bkDaysSave">Save</button></div></div>`,
+        <div class="actions"><button id="bkDaysSave">Save</button></div></div>
+      <div class="card" style="border-color:var(--bad)"><strong>Erase client data</strong>
+        <p class="mute" style="font-size:16px">Deletes every client, appointment, session, signed contract and countersigned copy on this device. Your settings, form wording, flash designs and saved signature are kept.</p>
+        <button class="danger" id="eraseAll">Erase all client data…</button></div>`,
     bind(root) {
       const msg = (id, cls, t) => { $(id, root).innerHTML = t ? `<div class="banner ${cls}">${esc(t)}</div>` : ""; };
       BackupMergeUI.bind(root);
@@ -163,6 +167,14 @@ const Backup = (() => {
       $("#bkDaysSave", root).onclick = async () => {
         settings = { ...settings, backupDays: Math.max(1, Math.min(90, parseInt($("#bkDays", root).value, 10) || 7)) }; await DB.put(settings);
         go("backup");
+      };
+      $("#eraseAll", root).onclick = async () => {
+        const n = DB.all("client").length;
+        if (!n) { alert("There are no clients to erase."); return; }
+        const appointments = DB.all("appointment").length;
+        const answer = prompt(`This permanently deletes ${n} client(s), ${appointments} appointment(s), and ALL their paperwork. Type ERASE to confirm.`);
+        if (answer !== "ERASE") return;
+        await eraseAllClientData(); go("settings");
       };
     }
   };

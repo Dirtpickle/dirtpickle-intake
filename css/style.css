@@ -112,7 +112,10 @@ select { width:100%; font:inherit; padding:15px; background:var(--panel); color:
   .row { padding:12px 2px; gap:8px; }
   .row .sub { font-size:14px; }
   .actions { gap:8px; margin-top:14px; }
-  .actions button { flex:1 1 140px; }
+  /* Full-width buttons on phones so a label never wraps to a lone letter on a second line. */
+  button, .btn { line-height:1.2; text-wrap:balance; padding-top:8px; padding-bottom:8px; }
+  .actions button { flex:1 1 100%; }
+  .actions button.small, .field-row button { flex:0 1 auto; }
   .kv { grid-template-columns:104px 1fr; gap:4px 10px; }
   .pin { margin-top:1.5vh; }
   .pin h1 { font-size:24px; }

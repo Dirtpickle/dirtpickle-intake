@@ -212,8 +212,8 @@ function searchScreen(title, back, autofocus) {
     }
   };
 }
-screens.returning = searchScreen("Returning client", "home", true);
-screens.clients = searchScreen("Clients", "home", false);
+screens.clients = searchScreen("Clients", "home", true);
+screens.returning = screens.clients;
 
 /* ---------- ID scan ---------- */
 function idPanel(sc) {

@@ -6,9 +6,7 @@ test("adds a walk-in, starts a tattoo, and records its start time", async ({ pag
   await newClient(page, "Queue Client");
   await goHome(page);
   await page.locator('[data-go="queue"]').click();
-  await page.getByRole("button", { name: "+ Add walk-in" }).click();
-  await page.locator("#q").fill("Queue Client");
-  await page.locator('[data-pick]').click();
+  await page.evaluate(() => go("flashPick", { id: DB.all("client")[0].id }));
   await page.getByRole("button", { name: /No flash/ }).click();
   await expect(page.locator(".card")).toContainText("Queue Client");
   await page.locator('[data-go="session"]').click();

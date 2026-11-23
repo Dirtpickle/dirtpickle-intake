@@ -17,7 +17,6 @@ test("Email signed contract re-sends the newest contract to a confirmed address"
   await setup(page); await seed(page);
   let body;
   await page.route("https://script.google.com/macros/s/x/exec", async route => { body = JSON.parse(route.request().postData()); await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true }) }); });
-  await page.locator("#profileMoreToggle").click();
   await page.locator("#emailContract").click();
   await expect(page.locator("#ecTo")).toHaveValue("mail@example.com");
   await page.locator("#ecTo").fill("other@example.com");
@@ -31,7 +30,6 @@ test("Email signed contract re-sends the newest contract to a confirmed address"
 
 test("Email signed contract explains when there is no signed contract", async ({ page }) => {
   await setup(page); await seed(page, false);
-  await page.locator("#profileMoreToggle").click();
   await page.locator("#emailContract").click();
   await expect(page.locator("#emailContractBox")).toContainText("No signed contract");
 });

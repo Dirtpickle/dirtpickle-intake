@@ -11,7 +11,6 @@ test("deletes a client and erases all client data", async ({ page }) => {
   await page.locator('[data-go="clients"]').click();
   await page.getByText("Delete Client", { exact: true }).click();
   page.once("dialog", dialog => dialog.accept());
-  await page.locator("#profileMoreToggle").click();
   await page.locator("#delClient").click();
   await expect(page.locator("#results")).toContainText("No matches");
   await expect.poll(() => page.evaluate(() => DB.all("photo").length)).toBe(0);
@@ -20,7 +19,7 @@ test("deletes a client and erases all client data", async ({ page }) => {
   await page.locator('[data-go="clients"]').click();
   await page.locator('[data-go="home"]').click();
   await openMoreTarget(page, "settings");
-  await page.locator('[data-go="settingsDanger"]').click();
+  await page.locator('[data-go="backup"]').click();
   page.once("dialog", dialog => dialog.accept("ERASE"));
   await page.locator("#eraseAll").click();
   await page.locator('[data-go="home"]').click();

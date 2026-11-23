@@ -21,9 +21,7 @@ test('finished timed session offers a suggestion without overwriting price', asy
   await openMoreTarget(page, "settings");
   await page.locator('[data-go="home"]').click();
   await page.locator('[data-go="queue"]').click();
-  await page.locator('[data-go="walkin"]').click();
-  await page.locator('#q').fill('Pricing Client');
-  await page.locator('[data-pick]').click();
+  await page.evaluate(() => go('flashPick', { id: DB.all('client')[0].id }));
   await page.getByText('No flash / custom design').click();
   await page.locator('[data-go="session"]').click();
   await page.locator('#s_price').fill('77');
@@ -45,9 +43,7 @@ test('flash session hides hourly suggestion until event pricing is enabled', asy
     await DB.put(f);
   });
   await page.locator('[data-go="queue"]').click();
-  await page.locator('[data-go="walkin"]').click();
-  await page.locator('#q').fill('Flash Pricing Client');
-  await page.locator('[data-pick]').click();
+  await page.evaluate(() => go('flashPick', { id: DB.all('client')[0].id }));
   await page.getByText('Test flash').click();
   await page.locator('[data-go="session"]').click();
   await page.locator('#tStart').click();

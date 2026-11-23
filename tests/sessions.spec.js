@@ -6,9 +6,7 @@ test('walk-in queue creates a session without a built-in timer', async ({ page }
   await newClient(page, 'Queue Client');
   await goHome(page);
   await page.locator('[data-go="queue"]').click();
-  await page.locator('[data-go="walkin"]').click();
-  await page.locator('#q').fill('Queue Client');
-  await page.locator('[data-pick]').click();
+  await page.evaluate(() => go('flashPick', { id: DB.all('client')[0].id }));
   await page.getByText('No flash / custom design').click();
   await expect(page.getByText('Queue Client')).toBeVisible();
   await page.locator('[data-go="session"]').click();

@@ -28,7 +28,7 @@ test("sends a text/plain relay request and records sent status", async ({ page }
   });
   await page.evaluate(() => Mailer.send(DB.get("email-doc")));
   expect(requestBody.secret).toBe("test-secret");
-  expect(requestBody.body).toContain("signed tattoo agreement is attached");
+  expect(requestBody.body).toBe("Hi,\n\nThank you for choosing Dirtpickle. Your signed tattoo agreement and aftercare instructions are attached for your records.\n\nIf you have any questions, please reply directly to this email.\n\nMike Peterson\nTattoo Artist | Dirtpickle");
   expect(requestBody.pdfBase64).toBe("AQID");
   expect(await page.evaluate(() => DB.get("email-doc").emailStatus)).toBe("sent");
 });

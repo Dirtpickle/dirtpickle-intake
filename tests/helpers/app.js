@@ -62,7 +62,7 @@ async function goHome(page) {
 }
 
 async function openMore(page) {
-  await page.locator('[data-go="more"]').click();
+  await expect(page.locator('[data-go="home"]')).toHaveCount(0);
 }
 
 async function openMoreTarget(page, target) {
@@ -71,7 +71,6 @@ async function openMoreTarget(page, target) {
     return;
   }
   if (await page.locator('[data-go="home"]').count()) await page.locator('[data-go="home"]').click();
-  await openMore(page);
   await page.locator(`[data-go="${target}"]`).click();
 }
 

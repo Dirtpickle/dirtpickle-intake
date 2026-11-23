@@ -1,6 +1,6 @@
 "use strict";
 
-/* Profile > More > "Email signed contract": re-sends a client's newest signed contract PDF to an address the artist confirms. */
+/* Re-sends a signed contract PDF to an address the artist confirms. */
 const ProfileEmail = (() => {
   const latest = clientId => DB.all("consent").filter(d => d.clientId === clientId && d.signedAt)
     .sort((a, b) => String(b.signedAt).localeCompare(String(a.signedAt)))[0] || null;
@@ -22,17 +22,22 @@ const ProfileEmail = (() => {
     } catch (e) { show("bad", e.message); }
   }
 
+  async function sendDocument(doc, email) {
+    return Mailer.send(doc, email);
+  }
+
   function bind(root, clientId) {
     const button = $("#emailContract", root);
     if (!button) return;
     button.onclick = () => {
-      const old = $("#emailContractBox", root); if (old) { old.remove(); return; }
       const doc = latest(clientId);
-      if (!doc) { button.insertAdjacentHTML("afterend", `<div class="banner warn" id="emailContractBox">No signed contract on file for this client yet.</div>`); return; }
-      $("#profileMoreActions", root).insertAdjacentHTML("beforeend", panelHtml(doc, (DB.get(clientId) || {}).email));
+      if (!doc) { $("#profileEmailSlot", root).innerHTML = `<div class="banner warn" id="emailContractBox">No signed contract on file for this client yet.</div>`; return; }
+      $("#profileEmailSlot", root).innerHTML = panelHtml(doc, (DB.get(clientId) || {}).email);
       $("#ecSend", root).onclick = () => send(root, clientId);
     };
+    const doc = latest(clientId);
+    if (doc) $("#profileEmailSlot", root).innerHTML = panelHtml(doc, (DB.get(clientId) || {}).email);
   }
 
-  return { bind, latest };
+  return { bind, latest, sendDocument };
 })();

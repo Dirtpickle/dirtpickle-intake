@@ -15,7 +15,7 @@ const TimesImportUI = (() => {
       ${disabled ? `<div class="banner ok">Already imported</div>` : `${updateText}<label>Attach to <select class="time-target"><option value="">Don't attach</option>${update ? `<option value="${esc(match.session.id)}" selected>${esc(label(match.session))}</option>` : choices.map(s => `<option value="${esc(s.id)}">${esc(label(s))}</option>`).join("")}</select></label>`}</div>`;
   };
   screens.timesImport = {
-    html: () => `${bar("Import tattoo times", { back: "queue" })}
+    html: () => `${bar("Import tattoo times", { back: "backup" })}
       <div class="card"><label for="timesFile">Choose a Tattoo Timer .json file</label><input id="timesFile" type="file" accept=".json,application/json">
       <label for="timesText">Or paste the file contents</label><textarea id="timesText" rows="7" placeholder='{"format":"tattoo-timer-1","entries":[]}'></textarea>
       <div class="actions"><button class="primary" id="timesRead">Read times</button></div><div id="timesErr"></div></div>
@@ -43,8 +43,5 @@ const TimesImportUI = (() => {
       };
     }
   };
-  const button = () => `<button data-go="timesImport">Import tattoo times</button>`;
-  const homeHtml = screens.home.html;
-  screens.home.html = () => homeHtml().replace(/<\/div>$/, `<div class="actions" style="margin-top:16px">${button()}</div></div>`);
-  return { button };
+  return {};
 })();

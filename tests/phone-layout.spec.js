@@ -5,7 +5,7 @@ test.use({ viewport: { width: 390, height: 844 } });
 
 test("main screens fit a phone width with no sideways scrolling", async ({ page }) => {
   await setup(page);
-  for (const name of ["home", "more", "settings", "settingsGoogle", "settingsContracts"]) {
+  for (const name of ["home", "flash", "events", "documents", "settings", "settingsGoogle", "settingsContracts", "backup"]) {
     await page.evaluate(n => go(n), name);
     await page.waitForTimeout(150);
     const over = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
@@ -34,3 +34,12 @@ for (const [w, h] of [[390, 844], [360, 640], [412, 700]]) {
     expect(fit.smallest).toBeGreaterThanOrEqual(44);
   });
 }
+
+test("phone action buttons take the full row so labels do not wrap to a lone letter", async ({ page }) => {
+  await setup(page);
+  await page.evaluate(async () => { await DB.put({ type: "client", id: "c-w", legalName: "Wrap Client", dob: "1990-01-01", email: "a@b.co" }); go("profile", { id: "c-w" }); });
+  const rows = await page.evaluate(() => [...document.querySelectorAll("#app .actions > button:not(.small)")].filter(b => b.offsetParent)
+    .map(b => ({ text: b.textContent.trim(), w: b.getBoundingClientRect().width, parent: b.parentElement.getBoundingClientRect().width })));
+  expect(rows.length).toBeGreaterThan(0);
+  for (const r of rows) expect(r.w, r.text).toBeGreaterThanOrEqual(r.parent - 2);
+});

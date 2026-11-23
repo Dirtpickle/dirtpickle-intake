@@ -44,14 +44,10 @@ const Sessions = (() => {
         <div class="stats">${statTile(todays.filter(s => s.status === "waiting" || s.status === "paperwork").length, "waiting")}${statTile(todays.filter(s => s.status === "ready").length, "ready")}
           ${statTile(todays.filter(s => s.status === "completed").length, "completed")}${statTile(money(sales) || "$0", "est. sales")}${statTile(forms, "forms done")}${statTile(pendingMail, "emails pending")}</div>
         ${cur ? `<div class="banner ok">Now tattooing: ${esc(clientName(cur.clientId))} · ${running(cur) ? "timer running" : "timer paused"} ${fmt(elapsed(cur))}</div>` : ""}
-        <div class="actions" style="margin:0 0 16px"><button class="primary" data-go="walkin">+ Add walk-in</button><button data-go="flash">Flash gallery</button></div>
+        <div class="actions" style="margin:0 0 16px"><button class="primary" data-go="clientForm">+ Add walk-in</button></div>
         <div class="card">${all.map(row).join("") || '<span class="mute">Nobody in the queue yet.</span>'}</div>`;
     }
   };
-  const legacyQueueHtml = screens.queue.html;
-  screens.queue.html = () => legacyQueueHtml()
-    .replace(/timer (?:running|paused) [^<]*/, "")
-    .replace(/Flash gallery<\/button>/, `Flash gallery</button>${TimesImportUI.button()}`);
   const running = () => false;
   const elapsed = s => SessionTime.duration(s);
   const fmt = ms => SessionTime.format(ms);
@@ -80,21 +76,6 @@ const Sessions = (() => {
     await save(s, { status: "inprogress", startedAt: s.startedAt || new Date().toISOString() });
   }
 
-  /* ----- walk-in: pick a client, then (optionally) a flash design ----- */
-  screens.walkin = {
-    html: () => `${bar("Add walk-in", { back: "queue" })}
-      <input id="q" type="search" placeholder="Search returning client by name, phone or email" autocomplete="off">
-      <div class="card" id="results" style="margin-top:16px"></div>
-      <div class="actions"><button class="primary" data-go="clientForm">New client</button></div>`,
-    bind(root) {
-      const draw = () => {
-        const list = searchClients($("#q", root).value);
-        $("#results", root).innerHTML = list.slice(0, 50).map(c => `<div class="row" data-pick="${esc(c.id)}"><div class="grow">${esc(nameOf(c))}<div class="sub">${[c.phone, c.email].filter(Boolean).map(esc).join(" · ")}</div></div><div class="mute">›</div></div>`).join("") || '<span class="mute">No matches. Use New client.</span>';
-      };
-      $("#q", root).oninput = draw; draw();
-      $("#results", root).onclick = e => { const r = e.target.closest("[data-pick]"); if (r) go("flashPick", { id: r.dataset.pick }); };
-    }
-  };
   /* ----- session detail (tattoo record) ----- */
   screens.session = {
     html({ id }) {
