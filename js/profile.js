@@ -6,6 +6,7 @@ function profileMoreActions(c) {
     <button data-go="appointmentForm" data-client-id="${esc(c.id)}">Book appointment</button>
     <button id="addVisit">Record visit today</button>
     <button id="printPaper">Print contract (wet ink)</button>
+    <button id="emailContract">Email signed contract</button>
   </div><div class="card" style="margin:14px 0 0;border-color:var(--bad)"><strong>Delete this client</strong>
     <p class="mute" style="font-size:16px">Permanently removes this client and all of their sessions, signed contracts and countersigned copies from this device. It cannot be undone, so make a backup first if you might need them.</p>
     <button class="danger" id="delClient">Delete client…</button></div></div>`;
@@ -47,6 +48,7 @@ screens.profile = {
     if (override) override.onclick = async () => { const entry = IdVerifyUI.overrideEntry(prompt("Why did you verify this ID in person?")); if (!entry) return; const c = DB.get(id); await DB.put({ ...c, idChecks: [...(c.idChecks || []), entry], updatedAt: new Date().toISOString() }); go("profile", { id }); };
     $("#saveNotes", root).onclick = async () => { await DB.put({ ...DB.get(id), notes: $("#notes", root).value, updatedAt: new Date().toISOString() }); $("#noteMsg", root).textContent = "Saved"; };
     $("#printPaper", root).onclick = () => Consent.printPaper(id);
+    ProfileEmail.bind(root, id);
     $("#delClient", root).onclick = async () => { const n = clientFootprint(id); const msg = `Permanently delete ${DB.get(id).legalName}, ${n.filter(r => r.type === "session").length} session(s), ${n.filter(r => r.type === "photo").length} photo(s), ${n.filter(r => r.type === "appointment").length} appointment(s) and ${n.filter(r => !["session", "photo", "appointment"].includes(r.type)).length} signed document(s)? This cannot be undone.`; if (!confirm(msg)) return; await deleteClient(id); go("clients"); };
     $("#startPaper", root).onclick = async () => { const waiting = Sessions.openForPaperwork(id), r = await Consent.start(id, waiting && waiting.id); if (r.error) { $("#paperErr", root).innerHTML = `<div class="banner bad">${esc(r.error)}</div>`; return; } go("kPrivacy"); };
     $("#addVisit", root).onclick = async () => { const c = DB.get(id); await DB.put({ ...c, visits: [...(c.visits || []), new Date().toISOString()], updatedAt: new Date().toISOString() }); go("profile", { id }); };
