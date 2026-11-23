@@ -59,7 +59,7 @@ const SyncUI = (() => {
     $("#syncResult", root).textContent = "Syncing…";
     try {
       const r = await SyncEngine.run(pin);
-      $("#syncResult", root).textContent = `Done. Added ${r.added}, updated ${r.updated}, deleted ${r.deleted}, merged ${r.merged}. ${r.uploaded} records now in sync.`;
+      $("#syncResult", root).textContent = `Done. Added ${r.added}, updated ${r.updated}, deleted ${r.deleted}, merged ${r.merged}. Everything is now matched on both devices: ${r.byType || "nothing yet"}.`;
     } catch (e) { $("#syncResult", root).textContent = ""; fail(root, e); }
   }
   function bindSettings(root) {
