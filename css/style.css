@@ -114,11 +114,14 @@ select { width:100%; font:inherit; padding:15px; background:var(--panel); color:
   .actions { gap:8px; margin-top:14px; }
   .actions button { flex:1 1 140px; }
   .kv { grid-template-columns:104px 1fr; gap:4px 10px; }
-  .pin { margin-top:3vh; }
-  .pin h1 { font-size:26px; }
-  .dots { margin:18px 0; }
-  .keys { gap:10px; }
-  .keys button { min-height:0; font-size:26px; }
+  .pin { margin-top:1.5vh; }
+  .pin h1 { font-size:24px; }
+  .pin p { margin:6px 0; font-size:15px; }
+  .dots { margin:12px 0; gap:12px; }
+  .err { min-height:20px; font-size:15px; }
+  /* Keypad sized by whichever is tighter, width or height, so all four rows always fit on screen. */
+  .keys { gap:10px; justify-items:center; max-width:300px; margin:0 auto; }
+  .keys button { width:min(23vw, 10.5vh); height:min(23vw, 10.5vh); min-height:0; aspect-ratio:auto; font-size:clamp(20px, 4vh, 28px); padding:0; }
   .yn button { min-height:54px; font-size:19px; }
   .agree { max-height:42vh; font-size:17px; }
   canvas.sig { height:200px; }

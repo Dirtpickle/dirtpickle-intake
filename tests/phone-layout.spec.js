@@ -18,3 +18,19 @@ test("phone tap targets stay at least 44px tall", async ({ page }) => {
   const small = await page.evaluate(() => [...document.querySelectorAll("#app button")].filter(b => b.offsetParent && b.getBoundingClientRect().height < 44).length);
   expect(small).toBe(0);
 });
+
+for (const [w, h] of [[390, 844], [360, 640], [412, 700]]) {
+  test(`the PIN keypad fits fully on a ${w}x${h} phone`, async ({ page }) => {
+    await page.setViewportSize({ width: w, height: h });
+    await setup(page);
+    await page.evaluate(() => showPin("unlock"));
+    const fit = await page.evaluate(() => {
+      const keys = [...document.querySelectorAll(".keys button")].filter(b => !b.classList.contains("blank"));
+      return { bottom: Math.max(...keys.map(b => b.getBoundingClientRect().bottom)), top: Math.min(...keys.map(b => b.getBoundingClientRect().top)),
+        smallest: Math.min(...keys.map(b => Math.min(b.getBoundingClientRect().width, b.getBoundingClientRect().height))), inner: window.innerHeight, count: keys.length };
+    });
+    expect(fit.count).toBeGreaterThanOrEqual(10);
+    expect(fit.bottom).toBeLessThanOrEqual(fit.inner);
+    expect(fit.smallest).toBeGreaterThanOrEqual(44);
+  });
+}
