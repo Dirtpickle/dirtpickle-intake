@@ -124,3 +124,18 @@ test("start over replaces an unreadable Drive copy with this device", async ({ p
   await page.evaluate(() => SyncEngine.run("123456"));
   expect(await page.evaluate(() => DB.get("keep").legalName)).toBe("Keep Me");
 });
+
+test("a synced signature shows in the app straight away and survives later settings saves", async ({ browser }) => {
+  const state = { data: null, version: 0, conflict: false };
+  const a = await browser.newPage(); const b = await browser.newPage();
+  await relay(a, state); await relay(b, state);
+  await setup(a); const kit = await a.evaluate(() => SyncSeal.newKit());
+  await configure(a, kit.salt);
+  await a.evaluate(async () => DB.put({ ...DB.get("settings"), artistSignature: "data:image/png;base64,NEWSIG", artistMarksAt: new Date().toISOString() }));
+  await a.evaluate(() => SyncEngine.run("123456"));
+  await setup(b); await configure(b, kit.salt);
+  await b.evaluate(() => SyncEngine.run("123456"));
+  expect(await b.evaluate(() => settings.artistSignature)).toBe("data:image/png;base64,NEWSIG");
+  await b.evaluate(async () => { settings = { ...settings, business: "Changed Later" }; await DB.put(settings); });
+  expect(await b.evaluate(() => DB.get("settings").artistSignature)).toBe("data:image/png;base64,NEWSIG");
+});

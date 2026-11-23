@@ -20,7 +20,10 @@ const SyncMarks = (() => {
     if (!marks) return false;
     const s = DB.get("settings") || {};
     if (time(marks.updatedAt) <= time(s.artistMarksAt) && (s.artistSignature || s.artistInitials)) return false;
-    await DB.put({ ...s, artistSignature: marks.signature || s.artistSignature, artistInitials: marks.initials || s.artistInitials, artistMarksAt: marks.updatedAt });
+    const next = { ...s, artistSignature: marks.signature || s.artistSignature, artistInitials: marks.initials || s.artistInitials, artistMarksAt: marks.updatedAt };
+    await DB.put(next);
+    /* The screens read the in-memory settings copy from app.js; refresh it so the new marks show and later saves do not overwrite them. */
+    if (typeof settings !== "undefined") settings = { ...settings, artistSignature: next.artistSignature, artistInitials: next.artistInitials, artistMarksAt: next.artistMarksAt };
     return true;
   }
 
