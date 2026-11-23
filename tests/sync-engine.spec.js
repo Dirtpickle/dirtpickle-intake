@@ -96,3 +96,17 @@ test("auto sync runs after unlock, can be turned off, and skips quietly when not
   await b.evaluate(async () => DB.put({ ...DB.get("settings"), autoSync: true, syncSalt: undefined }));
   expect(await b.evaluate(() => SyncAuto.run("123456"))).toBeNull();
 });
+
+test("start over replaces an unreadable Drive copy with this device", async ({ page }) => {
+  await setup(page);
+  const state = { data: "{\"version\":1,\"iv\":\"AAAA\",\"data\":\"AAAA\"}", version: 5 };
+  await relay(page, state);
+  const kit = await page.evaluate(() => SyncSeal.newKit());
+  await configure(page, kit.salt);
+  await page.evaluate(async () => DB.put({ type: "client", id: "keep", legalName: "Keep Me" }));
+  await expect(page.evaluate(() => SyncEngine.run("123456"))).rejects.toThrow("Could not open sync package");
+  await page.evaluate(() => SyncEngine.startOver("123456"));
+  await page.evaluate(() => SyncEngine.run("123456"));
+  expect(await page.evaluate(() => DB.get("keep").legalName)).toBe("Keep Me");
+  expect(state.data).not.toContain("Keep Me");
+});

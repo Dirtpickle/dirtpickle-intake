@@ -9,16 +9,16 @@ const SyncUI = (() => {
   const fail = (root, e) => { const m = $("#syncMsg", root); m.textContent = e.message; m.hidden = false; };
 
   function offHtml() {
-    return `<p><b>Not set up yet.</b> Pick one:</p>
-      <div class="actions"><button id="syncTurnOn" type="button" class="primary">This is my MAIN device: turn on sync</button></div>
-      <div class="actions"><button id="syncPairOpen" type="button">This is my SECOND device: pair it</button></div>
-      <div id="syncPairBox" hidden><label for="syncCodeIn">Type the pairing code from your main device (like K7M-4QX9)</label>
-        <input id="syncCodeIn" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="40" style="font-size:24px;letter-spacing:2px"><div class="actions"><button id="syncPairGo" type="button" class="primary">Pair</button></div></div>`;
+    return `<p><b>Sync is off on this device.</b> The iPad's Safari tab and its Home Screen app count as separate devices, so each one needs this. Pick ONE:</p>
+      <div class="actions"><button id="syncTurnOn" type="button" class="primary">First time ever: create the sync code</button></div>
+      <div class="actions"><button id="syncPairOpen" type="button">I already have a code: join sync</button></div>
+      <div id="syncPairBox" hidden><label for="syncCodeIn">Type the code from any device that already syncs (like K7M-4QX9)</label>
+        <input id="syncCodeIn" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="40" style="font-size:24px;letter-spacing:2px"><div class="actions"><button id="syncPairGo" type="button" class="primary">Join</button></div></div>`;
   }
   function onHtml(s) {
     return `<p><b>Sync is on.</b> Last synced: ${esc(last(s.lastSyncAt))}.</p>
       <div class="actions"><button id="syncNow" type="button" class="primary">Sync now</button></div><label style="display:flex;gap:12px;align-items:center;color:var(--fg)"><input id="autoSync" type="checkbox" style="width:26px;height:26px" ${s.autoSync === false ? "" : "checked"}> Sync automatically when I unlock</label><div id="syncResult" class="sub"></div>
-      <div class="actions"><button id="syncShowCode" type="button" class="small ghost">Show pairing code for another device</button><button id="syncReset" type="button" class="small ghost">Turn off sync on this device</button></div><div id="syncCodeBox"></div>`;
+      <div class="actions"><button id="syncShowCode" type="button" class="small ghost">Show pairing code for another device</button><button id="syncReset" type="button" class="small ghost">Turn off sync on this device</button></div><div class="actions"><button id="syncStartOver" type="button" class="small ghost">Start over: replace the Drive copy with this device</button></div><div id="syncCodeBox"></div>`;
   }
   function settingsHtml() {
     const s = DB.get("settings") || {};
@@ -27,7 +27,7 @@ const SyncUI = (() => {
   }
 
   function showCode(root, s) {
-    $("#syncCodeBox", root).innerHTML = `<div class="banner ok"><div style="font-size:15px">Pairing code. On your other device go to Settings, Google connection, "This is my SECOND device", and type this code. You only enter it once.</div>
+    $("#syncCodeBox", root).innerHTML = `<div class="banner ok"><div style="font-size:15px">Sync code. On each other device (including the iPad Home Screen app) go to Settings, Google connection, "I already have a code", and type this. Any device that syncs can show it again.</div>
       <div id="syncCodeText" style="font-family:monospace;font-size:34px;letter-spacing:3px;margin:10px 0;user-select:all">${esc(codeOf(s))}</div>
       <div class="actions"><button id="syncCopy" type="button" class="small">Copy code</button>${navigator.share ? `<button id="syncShare" type="button" class="small">Send it to myself</button>` : ""}</div></div>`;
     $("#syncCopy", root).onclick = async () => { try { await navigator.clipboard.writeText(codeOf(s)); $("#syncCopy", root).textContent = "Copied"; } catch (_) { $("#syncCopy", root).textContent = "Select the code and copy it"; } };
@@ -62,9 +62,16 @@ const SyncUI = (() => {
       $("#syncResult", root).textContent = `Done. Added ${r.added}, updated ${r.updated}, deleted ${r.deleted}, merged ${r.merged}. Everything is now matched on both devices: ${r.byType || "nothing yet"}.`;
     } catch (e) { $("#syncResult", root).textContent = ""; fail(root, e); }
   }
+  async function startOver(root) {
+    if (!confirm("Replace the copy in Google Drive with the data on THIS device? Use this only if sync says it cannot open the package. Your other devices keep their own data and merge with it on their next sync.")) return;
+    const pin = await PinPrompt.ask("Enter your PIN to sync", "It must be the same PIN on every device.");
+    if (!pin) return;
+    const r = await SyncEngine.startOver(pin);
+    $("#syncResult", root).textContent = `Drive copy replaced: ${r.byType || "nothing yet"}.`;
+  }
   function bindSettings(root) {
     const on = (id, fn) => $(id, root)?.addEventListener("click", () => fn(root).catch(e => fail(root, e)));
-    on("#syncTurnOn", turnOn); on("#syncPairGo", pair); on("#syncNow", sync);
+    on("#syncTurnOn", turnOn); on("#syncPairGo", pair); on("#syncNow", sync); on("#syncStartOver", startOver);
     $("#autoSync", root)?.addEventListener("change", async e => { await DB.put({ ...(DB.get("settings") || {}), autoSync: e.target.checked }); });
     $("#syncPairOpen", root)?.addEventListener("click", () => { $("#syncPairBox", root).hidden = false; $("#syncCodeIn", root).focus(); });
     $("#syncReset", root)?.addEventListener("click", async () => {

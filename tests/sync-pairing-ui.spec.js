@@ -5,14 +5,14 @@ test("sync card guides main-device setup and second-device pairing", async ({ br
   const a = await (await browser.newContext()).newPage(), b = await (await browser.newContext()).newPage();
   const cfg = p => p.evaluate(async () => { await DB.put({ ...DB.get("settings"), emailRelayUrl: "https://script.google.com/macros/s/x/exec", relaySecret: "test-secret" }); settings = DB.get("settings"); go("settingsGoogle"); });
   await setup(a); await setup(b); await cfg(a); await cfg(b);
-  await expect(a.getByRole("button", { name: /MAIN device/ })).toBeVisible();
-  await a.getByRole("button", { name: /MAIN device/ }).click();
+  await expect(a.getByRole("button", { name: /create the sync code/ })).toBeVisible();
+  await a.getByRole("button", { name: /create the sync code/ }).click();
   const code = (await a.locator("#syncCodeText").textContent()).trim();
   expect(code).toMatch(/^[A-Z2-9]{4}-[A-Z2-9]{4}$/);
   await expect(a.getByRole("button", { name: "Copy code" })).toBeVisible();
-  await b.getByRole("button", { name: /SECOND device/ }).click();
+  await b.getByRole("button", { name: /already have a code/ }).click();
   await b.locator("#syncCodeIn").fill(code);
-  await b.getByRole("button", { name: "Pair", exact: true }).click();
+  await b.getByRole("button", { name: "Join", exact: true }).click();
   await expect(b.getByRole("button", { name: "Sync now" })).toBeVisible();
   const same = await b.evaluate(() => DB.get("settings").syncSalt);
   const mainSalt = await a.evaluate(() => DB.get("settings").syncSalt);

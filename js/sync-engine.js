@@ -19,6 +19,18 @@ const SyncEngine = (() => {
       deleted: result ? result.remove.length + result.tombstones.length : 0, merged: result ? result.merged : 0, uploaded };
   }
 
+  /* Start over: replace the Drive copy with this device (for a Drive copy that cannot be opened). Devices keep their own data. */
+  async function startOver(pin) {
+    if (!DB.isUnlocked()) throw new Error("Unlock the pro side before syncing.");
+    const settings = DB.get("settings") || {};
+    if (!settings.syncSalt) throw new Error("Sync is not turned on on this device. Turn it on in Settings first.");
+    const remote = await SyncRelay.get();
+    const extra = SyncMarks.record();
+    await SyncRelay.put(await SyncSeal.seal(extra ? packageRecords().concat(extra) : packageRecords(), pin, settings.syncSalt), remote.version);
+    await DB.put({ ...settings, lastSyncAt: new Date().toISOString() });
+    return { uploaded: packageRecords().length, byType: countByType(packageRecords()) };
+  }
+
   async function syncOnce(pin) {
     const settings = DB.get("settings") || {};
     if (!settings.syncSalt) throw new Error("Sync is not turned on on this device. Turn it on in Settings first.");
@@ -52,5 +64,5 @@ const SyncEngine = (() => {
     }
   }
 
-  return { run, countByType };
+  return { run, startOver, countByType };
 })();
