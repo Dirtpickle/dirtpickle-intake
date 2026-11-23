@@ -93,3 +93,35 @@ select { width:100%; font:inherit; padding:15px; background:var(--panel); color:
 .initials-pad { position: relative; width: 100%; max-width: 420px; }
 .initials-hint { position: absolute; left: 12px; bottom: 10px; color: #999; pointer-events: none; font-size: 14px; }
 .initials-hint[hidden] { display: none; }
+
+/* Phones (iPad and desktop are wider than this and keep the sizes above). */
+@media (max-width: 600px) {
+  html, body { font-size:17px; }
+  #app { padding:10px 12px 48px; }
+  header.bar { gap:8px; padding:4px 0 12px; margin-bottom:14px; }
+  header.bar h1 { font-size:21px; }
+  button, .btn { min-height:50px; padding:0 14px; border-radius:12px; }
+  button.small { min-height:44px; font-size:16px; }
+  .grid { grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; }
+  .tile { min-height:96px; padding:12px; font-size:19px; border-radius:14px; overflow-wrap:anywhere; }
+  .tile small { font-size:13px; }
+  .cols { grid-template-columns:1fr; }
+  .card { padding:12px 14px; margin-bottom:12px; border-radius:14px; }
+  input, textarea, select { padding:12px; }
+  label { font-size:14px; margin:12px 0 5px; }
+  .row { padding:12px 2px; gap:8px; }
+  .row .sub { font-size:14px; }
+  .actions { gap:8px; margin-top:14px; }
+  .actions button { flex:1 1 140px; }
+  .kv { grid-template-columns:104px 1fr; gap:4px 10px; }
+  .pin { margin-top:3vh; }
+  .pin h1 { font-size:26px; }
+  .dots { margin:18px 0; }
+  .keys { gap:10px; }
+  .keys button { min-height:0; font-size:26px; }
+  .yn button { min-height:54px; font-size:19px; }
+  .agree { max-height:42vh; font-size:17px; }
+  canvas.sig { height:200px; }
+  .choice button { min-height:56px; font-size:17px; }
+  .qrow.check input { width:26px; height:26px; }
+}
