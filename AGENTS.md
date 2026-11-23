@@ -9,7 +9,7 @@ Keep replies short.
   Reads only public data (form wording, business name, min age, available flash).
 - PRO side (6-digit PIN -> PBKDF2 -> AES-GCM key): imports inbox, merges returning clients, creates sessions/consents.
 - Signed consents are write-once and store the exact wording, PDF and SHA-256. Forgotten PIN = unrecoverable data.
-- Backups (.dpbackup) are encrypted; restore needs the original PIN. Optional encrypted sync between devices via the user's own Google Drive (Apps Script relay).
+- Backups (.dpbackup) are encrypted; restore needs the original PIN. No sync between devices.
 - Saved-data changes need a migration plus an old-format test. Never store license numbers.
 
 ## Layout (js/)

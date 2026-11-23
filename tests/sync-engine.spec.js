@@ -51,7 +51,7 @@ test("sync reports wrong PIN and relay configuration errors", async ({ page }) =
   await relay(page, state);
   await configure(page, salt);
   await expect(page.evaluate(() => SyncEngine.run("000000"))).rejects.toThrow("Could not open sync package");
-  await page.evaluate(async () => DB.put({ ...DB.get("settings"), syncEnabled: false }));
+  await page.evaluate(async () => DB.put({ ...DB.get("settings"), syncSalt: null }));
   await expect(page.evaluate(() => SyncEngine.run("123456"))).rejects.toThrow("Sync is not turned on");
 });
 
@@ -93,34 +93,6 @@ test("auto sync runs after unlock, can be turned off, and skips quietly when not
   expect(await b.evaluate(() => DB.get("client-auto").legalName)).toBe("Auto Client");
   await b.evaluate(async () => DB.put({ ...DB.get("settings"), autoSync: false }));
   expect(await b.evaluate(() => SyncAuto.enabled())).toBe(false);
-  await b.evaluate(async () => DB.put({ ...DB.get("settings"), autoSync: true, syncEnabled: false }));
+  await b.evaluate(async () => DB.put({ ...DB.get("settings"), autoSync: true, syncSalt: undefined }));
   expect(await b.evaluate(() => SyncAuto.run("123456"))).toBeNull();
-});
-
-test("any number of devices sync with just the same URL and PIN, and old copies still open", async ({ browser }) => {
-  const state = { data: null, version: 0, conflict: false };
-  const pages = [await browser.newPage(), await browser.newPage(), await browser.newPage()];
-  for (const p of pages) { await relay(p, state); await setup(p); await p.evaluate(async () => DB.put({ ...DB.get("settings"), emailRelayUrl: "https://script.google.com/macros/s/ABC/exec", relaySecret: "any-secret", syncEnabled: true })); }
-  await pages[0].evaluate(async () => DB.put({ type: "client", id: "c-one", legalName: "From One" }));
-  await pages[1].evaluate(async () => DB.put({ type: "client", id: "c-two", legalName: "From Two" }));
-  for (const p of [pages[0], pages[1], pages[2], pages[0]]) await p.evaluate(() => SyncEngine.run("123456"));
-  for (const p of pages) expect(await p.evaluate(() => [DB.get("c-one")?.legalName, DB.get("c-two")?.legalName])).toEqual(["From One", "From Two"]);
-  // A copy locked with an old pairing-code key still opens on a device that remembers that key.
-  const legacy = await pages[0].evaluate(() => SyncSeal.newKit().salt);
-  state.data = await pages[0].evaluate(async s => SyncSeal.seal([{ type: "client", id: "c-old", legalName: "Old Copy" }], "123456", s), legacy);
-  await pages[1].evaluate(async s => DB.put({ ...DB.get("settings"), syncSalt: s }), legacy);
-  await pages[1].evaluate(() => SyncEngine.run("123456"));
-  expect(await pages[1].evaluate(() => DB.get("c-old")?.legalName)).toBe("Old Copy");
-});
-
-test("start over replaces an unreadable Drive copy with this device", async ({ page }) => {
-  await setup(page);
-  const state = { data: "{\"version\":1,\"iv\":\"AAAA\",\"data\":\"AAAA\"}", version: 5 };
-  await relay(page, state);
-  await page.evaluate(async () => DB.put({ ...DB.get("settings"), emailRelayUrl: "https://script.google.com/macros/s/ABC/exec", relaySecret: "s", syncEnabled: true }));
-  await page.evaluate(async () => DB.put({ type: "client", id: "keep", legalName: "Keep Me" }));
-  await expect(page.evaluate(() => SyncEngine.run("123456"))).rejects.toThrow("Could not open sync package");
-  await page.evaluate(() => SyncEngine.startOver("123456"));
-  await page.evaluate(() => SyncEngine.run("123456"));
-  expect(await page.evaluate(() => DB.get("keep").legalName)).toBe("Keep Me");
 });

@@ -12,7 +12,7 @@ const SyncSeal = (() => {
     return JSON.stringify({ version: VERSION, iv: b64(iv), data: b64(new Uint8Array(data)) }); }
   async function open(sealed, pin, saltB64) { try { const box = JSON.parse(sealed); if (box.version !== VERSION) throw new Error();
       const data = await crypto.subtle.decrypt({ name: "AES-GCM", iv: raw(box.iv) }, await derive(pin, raw(saltB64)), raw(box.data)); return JSON.parse(decoder.decode(data));
-    } catch (_) { throw new Error("Could not open sync package: check that the PIN is the same on every device and the Apps Script URL is the same."); } }
+    } catch (_) { throw new Error("Could not open sync package: check the PIN, pairing code, and package."); } }
   function newKit() { return { salt: b64(crypto.getRandomValues(new Uint8Array(16))) }; }
   function pairingCode(kit) { const body = `v${VERSION}.${kit.salt}`; return `${body}.${checksum(body)}`; }
   function fromPairingCode(code) { const parts = String(code).split("."); const body = parts.slice(0, 2).join(".");
@@ -25,16 +25,10 @@ const SyncSeal = (() => {
     const hash = await crypto.subtle.digest("SHA-256", encoder.encode("dirtpickle-sync-v1:" + clean));
     return b64(new Uint8Array(hash).slice(0, 16));
   }
-  /* v2: every device derives the same salt from the Apps Script deployment id (the stable part of the /exec URL), so no pairing code is needed. */
-  const deploymentId = url => { const rest = String(url).split("/macros/s/")[1]; return rest ? rest.split("/")[0] : String(url).trim(); };
-  async function saltFromUrl(url) {
-    const hash = await crypto.subtle.digest("SHA-256", encoder.encode("dirtpickle-sync-v2:" + deploymentId(url)));
-    return b64(new Uint8Array(hash).slice(0, 16));
-  }
   async function newPairing() {
     const picks = crypto.getRandomValues(new Uint8Array(8)), raw8 = Array.from(picks, n => ALPHABET[n % ALPHABET.length]).join("");
     const code = raw8.slice(0, 4) + "-" + raw8.slice(4);
     return { code, salt: await saltFromCode(code) };
   }
-  return { newKit, seal, open, pairingCode, fromPairingCode, newPairing, saltFromCode, saltFromUrl };
+  return { newKit, seal, open, pairingCode, fromPairingCode, newPairing, saltFromCode };
 })();

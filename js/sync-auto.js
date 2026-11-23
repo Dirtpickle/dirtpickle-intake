@@ -15,7 +15,7 @@ const SyncAuto = (() => {
 
   function enabled() {
     const s = DB.get("settings") || {};
-    return s.syncEnabled === true && s.autoSync !== false && navigator.onLine !== false
+    return !!s.syncSalt && s.syncEnabled !== false && s.autoSync !== false && navigator.onLine !== false
       && Mailer.configured(Mailer.relayFromSettings());
   }
 

@@ -19,34 +19,16 @@ const SyncEngine = (() => {
       deleted: result ? result.remove.length + result.tombstones.length : 0, merged: result ? result.merged : 0, uploaded };
   }
 
-  /* Opens with the URL-derived key; copies made by older versions used a pairing-code key, so try that as a fallback. */
-  async function openRemote(data, pin, salt, legacySalt) {
-    try { return await SyncSeal.open(data, pin, salt); }
-    catch (error) { if (!legacySalt) throw error; return SyncSeal.open(data, pin, legacySalt); }
-  }
-
-  /* Start over: replace the Drive copy with this device (use when the Drive copy cannot be opened). Devices keep their own data. */
-  async function startOver(pin) {
-    if (!DB.isUnlocked()) throw new Error("Unlock the pro side before syncing.");
-    const salt = await SyncSeal.saltFromUrl(Mailer.relayFromSettings().url);
-    const remote = await SyncRelay.get();
-    const extra = SyncMarks.record();
-    await SyncRelay.put(await SyncSeal.seal(extra ? packageRecords().concat(extra) : packageRecords(), pin, salt), remote.version);
-    await DB.put({ ...(DB.get("settings") || {}), lastSyncAt: new Date().toISOString() });
-    return { uploaded: packageRecords().length, byType: countByType(packageRecords()) };
-  }
-
   async function syncOnce(pin) {
     const settings = DB.get("settings") || {};
-    if (settings.syncEnabled !== true) throw new Error("Sync is not turned on on this device. Turn it on in Settings first.");
-    const salt = await SyncSeal.saltFromUrl(Mailer.relayFromSettings().url);
+    if (!settings.syncSalt) throw new Error("Sync is not turned on on this device. Turn it on in Settings first.");
     const remote = await SyncRelay.get();
-    const opened = remote.data ? await openRemote(remote.data, pin, salt, settings.syncSalt) : [];
+    const opened = remote.data ? await SyncSeal.open(remote.data, pin, settings.syncSalt) : [];
     const { marks, rest } = SyncMarks.split(opened);
     const result = await applyMerge(rest);
     await SyncMarks.apply(marks);
     const extra = SyncMarks.record();
-    const sealed = await SyncSeal.seal(extra ? packageRecords().concat(extra) : packageRecords(), pin, salt);
+    const sealed = await SyncSeal.seal(extra ? packageRecords().concat(extra) : packageRecords(), pin, settings.syncSalt);
     const size = new Blob([sealed]).size;
     if (size > MAX_BYTES) throw new Error(`Sync package is ${Math.ceil(size / 1024 / 1024)} MB, over the 8 MB limit.`);
     await SyncRelay.put(sealed, remote.version);
@@ -70,5 +52,5 @@ const SyncEngine = (() => {
     }
   }
 
-  return { run, startOver, countByType };
+  return { run, countByType };
 })();
