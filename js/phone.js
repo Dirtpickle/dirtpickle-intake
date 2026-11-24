@@ -19,5 +19,11 @@ const Phone = (() => {
     return digits(value).length === 10;
   }
 
-  return { format, digits, isValid };
+  /* Format as the user types; returns a checker that shows an error under each field. */
+  function wire(root, ids) {
+    ids.forEach(id => { const el = root.querySelector("#" + id); if (el) { el.value = format(el.value); el.addEventListener("input", () => { el.value = format(el.value); }); } });
+    return () => ids.filter(id => { const el = root.querySelector("#" + id); const bad = el && el.value.trim() && !isValid(el.value); const note = root.querySelector(`[data-phone-error="${id}"]`); if (note) note.textContent = bad ? "Enter a 10-digit phone number." : ""; return bad; });
+  }
+
+  return { format, digits, isValid, wire };
 })();

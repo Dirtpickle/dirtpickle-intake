@@ -294,11 +294,11 @@ screens.clientForm = {
           ${f("preferredName", "Preferred name", 'autocapitalize="words"')}
           <label for="dob">Date of birth *</label><input id="dob" type="date" value="${esc(c.dob)}">
           <div id="ageLine"></div></div>
-        <div>${f("phone", "Phone number", 'type="tel" inputmode="tel"')}
+        <div>${f("phone", "Phone number", 'type="tel" inputmode="tel" autocomplete="tel"')}<div class="sub" data-phone-error="phone"></div>
           ${f("email", "Email address", 'type="email" inputmode="email" autocapitalize="off"')}
           <label for="address">Address</label><input id="address" value="${esc(c.address)}" autocapitalize="words">${addressSuggestion}</div>
         <div>${IdVerifyUI.licenseField(c)}${f("emergencyName", "Emergency contact name")}
-          ${f("emergencyPhone", "Emergency contact phone", 'type="tel" inputmode="tel"')}</div>
+          ${f("emergencyPhone", "Emergency contact phone", 'type="tel" inputmode="tel"')}<div class="sub" data-phone-error="emergencyPhone"></div></div>
       </div>
       <div id="dupBox"></div>
       <div class="actions"><button class="primary" id="saveClient">${id ? "Save changes" : "Save client"}</button>
@@ -348,6 +348,7 @@ screens.clientForm = {
       save.disabled = !ok;
     };
     $("#dob", root).oninput = refreshAge; refreshAge();
+    const badPhones = Phone.wire(root, ["phone", "emergencyPhone"]);
     const gather = () => ({
       legalName: v("legalName"), preferredName: v("preferredName"), dob: $("#dob", root).value,
       phone: v("phone"), email: v("email"), address: v("address"),
@@ -378,6 +379,7 @@ screens.clientForm = {
       const d = gather();
       const age = ageOn(d.dob);
       const msgs = [];
+      badPhones().forEach(id => msgs.push(id === "phone" ? "Phone must have 10 digits." : "Emergency contact phone must have 10 digits."));
       if (!d.legalName) msgs.push("Full legal name is required.");
       if (age === null) msgs.push("Enter a valid date of birth.");
       else if (age >= 130) msgs.push("Check the date of birth.");
