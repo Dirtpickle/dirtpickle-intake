@@ -153,6 +153,7 @@ async function loadSyncModules() {
 }
 async function afterUnlock(pin) {
   Nav.unlock();
+  await loadTextCopyModule();
   await Flash.migrateAll();
   const saved = DB.get("settings") || {};
   settings = { ...DEFAULTS, ...saved, pricing: { ...DEFAULTS.pricing, ...(saved.pricing || {}) } };
@@ -168,6 +169,12 @@ async function afterUnlock(pin) {
   lastActive = Date.now();
   go("home", {}, { replace: true });
   if (pin && typeof SyncAuto !== "undefined") SyncAuto.run(pin);
+}
+let textCopyModuleLoaded = false;
+async function loadTextCopyModule() {
+  if (textCopyModuleLoaded) return;
+  await new Promise((resolve, reject) => { const script = document.createElement("script"); script.src = "js/text-copy.js"; script.onload = resolve; script.onerror = reject; document.body.appendChild(script); });
+  textCopyModuleLoaded = true;
 }
 let proReturningModulesLoaded = false;
 async function loadProReturningModules() {
@@ -394,7 +401,7 @@ screens.clientForm = {
 };
 
 /* ---------- Deleting (explicit, confirmed; also removes the client's signed paperwork) ---------- */
-const CLIENT_TYPES = ["session", "consent", "countersign", "aftercare", "photo", "appointment"];
+const CLIENT_TYPES = ["session", "consent", "countersign", "aftercare", "photo", "appointment", "textcopy"];
 function clientFootprint(id) {
   const rows = [];
   for (const t of CLIENT_TYPES) for (const r of DB.all(t)) if (r.clientId === id) rows.push(r);

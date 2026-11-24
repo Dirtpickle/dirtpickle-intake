@@ -367,10 +367,11 @@ const Consent = (() => {
   const relayOk = () => K.mode === "intake" ? !!K.relayConfigured : Mailer.configured(Mailer.relayFromSettings());
   const emailNotice = () => ConsentCopy.notice(K.copy, relayOk());
   const defaultEmail = () => (K.mode === "intake" ? (K.client || {}).email : (K.contact || {}).email) || "";
+  const defaultPhone = () => (K.mode === "intake" ? (K.client || {}).phone : (K.contact || {}).phone) || "";
   screens.kSign = {
     html: () => `${kbar("Read and sign")}
       <div class="card agree">${K.tpl.agreement.map(p => `<p>${esc(p)}</p>`).join("")}</div>
-      ${ConsentCopy.html(defaultEmail(), relayOk(), K.scanOnly ? { onFile: true } : {})}
+      ${ConsentCopy.html(defaultEmail(), relayOk(), { ...(K.scanOnly ? { onFile: true } : {}), phone: defaultPhone() })}
       <label>Sign below with your finger or Apple Pencil</label>
       <canvas id="sig" class="sig"></canvas>
       <div class="actions"><button class="ghost" id="sigClear">Clear</button><button class="ghost" data-go="kQuestions">‹ Back</button>
@@ -406,7 +407,7 @@ const Consent = (() => {
     const sha256 = hex(await crypto.subtle.digest("SHA-256", bytes));
     await DB.seal({ v: 1, submittedAt: now, returning: K.returning, scanOnly: !!K.scanOnly, client: c, idCheck, idPhoto: K.frontPhoto,
       ...(K.idPhotoCheck ? { idPhotoCheck: { score: K.idPhotoCheck.score } } : {}), session,
-      consent: { id: docId, signedAt: now, copyTo: K.copy.to || "", copyToOnFile: !!K.copy.onFile, template: K.tpl, answers: K.answers, signature, idCheck, ageAtSigning, privacy, pdf: bytesToB64(bytes), sha256 } });
+      consent: { id: docId, signedAt: now, copyTo: K.copy.to || "", copyToOnFile: !!K.copy.onFile, textCopy: !!K.copy.text, copyPhone: K.copy.phone || "", template: K.tpl, answers: K.answers, signature, idCheck, ageAtSigning, privacy, pdf: bytesToB64(bytes), sha256 } });
     return docId;
   }
 
@@ -429,7 +430,7 @@ const Consent = (() => {
       clientSnapshot: { id: client.id, legalName: client.legalName, dob: client.dob, phone: client.phone, email: client.email, address: client.address },
       template: K.tpl, answers: K.answers, signature, idCheck, ageAtSigning, privacy: { text: privacyText(), at: K.privacyAt || now },
       ...(shortReference ? { short: true, basedOn: shortReference.id, shortReference } : {}),
-      pdf: bytesToB64(bytes), sha256: hash, emailStatus: "not-sent", copyTo: K.copy.to || ""
+      pdf: bytesToB64(bytes), sha256: hash, emailStatus: "not-sent", copyTo: K.copy.to || "", textCopy: !!K.copy.text, copyPhone: K.copy.phone || ""
     };
     session.consentId = docId; session.updatedAt = now;
     await DB.put(session); await DB.put(record); await DB.put(client);
@@ -454,7 +455,7 @@ const Consent = (() => {
   const fileName = d => `${(d.clientSnapshot.legalName || "client").replace(/[^a-z0-9]+/gi, "-")}-consent-${d.signedAt.slice(0, 10)}.pdf`;
 
   screens.documents = {
-    html: () => `${bar("Documents", { back: "home" })}<div class="card">${docs().map(docRow).join("") || '<span class="mute">No signed documents yet.</span>'}</div>
+    html: () => `${bar("Documents", { back: "home" })}<div class="card">${docs().map(d => docRow(d) + TextCopy.badge(d)).join("") || '<span class="mute">No signed documents yet.</span>'}</div>
       <div class="card"><strong>Email status</strong>${statusRows()}</div>
       <div class="card mute">Open a document to view, print, share, or send its PDF.</div>`
   };
@@ -501,7 +502,7 @@ const Consent = (() => {
         <dt>Document ID</dt><dd>${esc(d.id)}</dd><dt>SHA-256</dt><dd style="font-size:13px">${esc(d.sha256)}</dd><dt>Email</dt><dd>${esc(statusText(d))}${d.emailError ? " — " + esc(d.emailError) : ""}</dd></dl>
         <label for="emailTo">Send to</label><input id="emailTo" type="email" value="${esc(d.clientSnapshot.email || "")}" autocomplete="off">
         <div class="actions"><button class="primary" id="sendEmail">Send / Resend</button></div><div id="emailMsg"></div>
-        <div class="actions"><button class="primary" id="dView">View / Print</button><button id="dSave">Download / Share</button><button id="dVerify">Verify integrity</button></div>
+        <div class="actions"><button class="primary" id="textContract">Text contract + aftercare</button><button id="dView">View / Print</button><button id="dSave">Download / Share</button><button id="dVerify">Verify integrity</button></div><div id="textCopySlot"></div>
         <div id="dMsg" style="margin-top:12px"></div></div>
         <div class="card"><strong>Artist countersignature</strong>
         ${cs ? `<dl class="kv" style="margin-top:8px"><dt>Countersigned</dt><dd>${esc(stamp(cs.signedAt))}</dd><dt>SHA-256</dt><dd style="font-size:13px">${esc(cs.sha256)}</dd></dl>
@@ -512,6 +513,7 @@ const Consent = (() => {
     },
     bind(root, { id }) {
       const d = DB.get(id); if (!d) return;
+      $("#textContract", root).onclick = () => { $("#textCopySlot", root).innerHTML = TextCopy.panel(d, d.copyPhone || d.clientSnapshot.phone); TextCopy.bindPanel(root, d); };
       $("#sendEmail", root).onclick = async () => {
         const msg = $("#emailMsg", root);
         try { await Mailer.send(d, $("#emailTo", root).value); go("doc", { id }); }

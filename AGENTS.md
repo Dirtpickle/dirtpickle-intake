@@ -13,7 +13,7 @@ Keep replies short.
 - Saved-data changes need a migration plus an old-format test. Never store license numbers.
 
 ## Layout (js/)
-db.js store/crypto/backup-import | app.js boot/router/PIN/home/client/settings | consent.js contract UI, signature, PDFs, kiosk
+db.js store/crypto/backup-import | app.js boot/router/PIN/home/client/settings | consent.js contract UI, signature, PDFs, kiosk | consent-copy.js copy choice | text-copy.js artist share action
 contract.js contract template data | intake.js intake side + inbox import | sessions.js queue/flash/session
 session-time.js legacy time display/pricing | times-import.js Tattoo Timer parsing/matching | times-import-ui.js import screen
 appointments.js appointment data/rules | appointments-ui.js appointment screens | calendar-sync.js relay queue | calendar-settings.js settings

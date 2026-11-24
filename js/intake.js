@@ -159,7 +159,7 @@ const Intake = (() => {
           await DB.put({ type: "consent", id: k.id, locked: true, clientId: c.id, sessionId: p.session.id, signedAt: k.signedAt,
             clientSnapshot: { id: c.id, legalName: c.legalName, dob: c.dob, phone: c.phone, email: c.email, address: c.address },
             template: k.template, answers: k.answers, signature: k.signature, idCheck: k.idCheck, ageAtSigning: k.ageAtSigning, privacy: k.privacy,
-            pdf: k.pdf, sha256: k.sha256, copyTo: k.copyTo || "", copyToOnFile: !!k.copyToOnFile,
+            pdf: k.pdf, sha256: k.sha256, copyTo: k.copyTo || "", copyToOnFile: !!k.copyToOnFile, textCopy: !!k.textCopy, copyPhone: k.copyPhone || "",
             emailStatus: (k.copyToOnFile ? c.email : k.copyTo) && Mailer.configured(Mailer.relayFromSettings()) ? "queued" : "not-sent" });
           added++;
         } catch (e) { if (/locked/.test(e.message)) already++; else throw e; }
