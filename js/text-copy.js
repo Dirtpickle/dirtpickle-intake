@@ -45,6 +45,7 @@ const TextCopy = (() => {
   }
   function bindPanel(root, doc) {
     const phone = $("#textCopyPhone", root), number = $("#textCopyNumber", root), msg = $("#textCopyMsg", root);
+    $("#textCopyBox", root).scrollIntoView({ block: "center", behavior: "smooth" });
     phone.oninput = () => { phone.value = Phone.format(phone.value); number.textContent = phone.value; };
     $("#textCopyNumberButton", root).onclick = async () => { try { await navigator.clipboard.writeText(Phone.format(phone.value)); msg.innerHTML = `<div class="banner ok">Number copied.</div>`; } catch (_) { msg.innerHTML = `<div class="banner warn">Select and copy the number above.</div>`; } };
     $("#textCopySend", root).onclick = async () => {
