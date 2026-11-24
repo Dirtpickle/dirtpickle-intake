@@ -389,9 +389,16 @@ screens.clientForm = {
       if (!hasPhoto && !newIdPhoto && !overrideReason) msgs.push("Take a photo of the front of the license, or use the artist override.");
       const box = $("#dupBox", root);
       if (msgs.length) { box.innerHTML = `<div class="banner bad">${msgs.map(esc).join("<br>")}</div>`; return; }
-      const dup = findDuplicate(d, id);
+      // Editing a file: only warn about a conflict the artist just introduced, not one already there.
+      const changed = id ? { ...d, ...(d.email === existing.email ? { email: "" } : {}), ...(d.phone === existing.phone ? { phone: "" } : {}),
+        ...(d.legalName === existing.legalName && d.dob === existing.dob ? { legalName: "-" } : {}) } : d;
+      const dup = findDuplicate(changed, id);
       if (dup && !box.dataset.confirmed) {
-        box.innerHTML = `<div class="banner warn">Possible existing client: ${esc(nameOf(dup))}.
+        box.innerHTML = id
+          ? `<div class="banner warn">Another client file (${esc(nameOf(dup))}) already has this phone, email or name and birthday.
+          <div class="actions"><button class="small primary" id="saveAnyway">Update file anyway</button>
+          <button class="small" data-go="profile" data-id="${esc(dup.id)}">Open the other file</button></div></div>`
+          : `<div class="banner warn">Possible existing client: ${esc(nameOf(dup))}.
           <div class="actions"><button class="small" data-go="profile" data-id="${esc(dup.id)}">Open existing</button>
           <button class="small" id="saveAnyway">Save as separate client</button></div></div>`;
         $("#saveAnyway", root).onclick = () => { box.dataset.confirmed = "1"; doSave(d); };
