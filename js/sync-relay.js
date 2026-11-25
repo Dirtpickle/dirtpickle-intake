@@ -20,5 +20,5 @@ const SyncRelay = (() => {
     return reply;
   }
 
-  return { get: () => request({ action: "sync.get" }), put: (sealed, baseVersion) => request({ action: "sync.put", sealed, baseVersion: baseVersion ?? null }) };
+  return { get: () => request({ action: "sync.get" }), put: (sealed, baseVersion) => request({ action: "sync.put", sealed, baseVersion: baseVersion ?? null }), publish: payload => request(payload) };
 })();

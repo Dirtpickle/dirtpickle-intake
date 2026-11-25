@@ -65,5 +65,18 @@ const Flash = (() => {
     return item;
   }
 
-  return { KINDS, STATUSES, normalize, migrateAll, list, get, available, claim, complete, release };
+  async function hold(id) {
+    const item = get(id);
+    if (!item || item.kind === "repeatable" || item.status !== "available") return item;
+    return DB.put({ ...item, status: "reserved", reservedFor: null });
+  }
+
+  async function markSold(id) {
+    const item = get(id);
+    if (!item || item.kind === "repeatable") return item;
+    return DB.put({ ...item, status: "sold", reservedFor: null,
+      purchase: { source: "in-person", at: new Date().toISOString() } });
+  }
+
+  return { KINDS, STATUSES, normalize, migrateAll, list, get, available, claim, complete, release, hold, markSold };
 })();
