@@ -72,7 +72,8 @@ test("bulk picture import matches normalized filenames and reports misses", asyn
     { name: "cat1.png", mimeType: "image/png", buffer: png },
     { name: "missing.png", mimeType: "image/png", buffer: png }
   ]);
-  await expect(page.locator("#flashImportResult")).toContainText("Matched: 1");
-  await expect(page.locator("#flashImportResult")).toContainText("Unmatched: 1");
+  await expect(page.locator("#flashImportResult")).toContainText("Updated: 1");
+  await expect(page.locator("#flashImportResult")).toContainText("New designs: 1");
+  await expect.poll(() => page.evaluate(() => !!FlashCode.find(Flash.list(), "MISSING")?.picture)).toBe(true);
   await expect.poll(() => page.evaluate(() => DB.get(FlashCode.find(Flash.list(), "CAT1").id).picture?.startsWith("data:image/jpeg"))).toBe(true);
 });
