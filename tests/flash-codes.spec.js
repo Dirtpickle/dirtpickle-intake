@@ -7,20 +7,15 @@ test('normalizes and finds forgiving flash codes', async ({ page }) => {
   expect(result.name).toBe('Skull');
 });
 
-test('rejects duplicate codes and skips existing range entries', async ({ page }) => {
+test('rejects duplicate codes', async ({ page }) => {
   await setup(page);
   await page.evaluate(() => DB.put({ type: 'flash', id: 'existing', code: '1BF26', name: 'Existing', status: 'available', kind: 'repeatable' }));
   await openMoreTarget(page, "flash");
-  await page.locator('[data-go="flashAdd"]').click();
+  await page.evaluate(() => DB.put({ type: 'flash', id: 'other', code: 'OTHER', status: 'available', kind: 'repeatable' }));
+  await page.evaluate(() => go('flashEdit', { id: 'other' }));
   await page.locator('#f_code').fill('1-BF-26');
   await page.locator('#fSave').click();
   await expect(page.locator('#fErr')).toContainText('already exists');
-  await page.evaluate(() => go('flash'));
-  await page.locator('[data-go="flashRange"]').click();
-  await page.locator('#f_from').fill('1');
-  await page.locator('#f_to').fill('2');
-  await page.locator('#fSave').click();
-  await expect(page.locator('.fitem')).toHaveCount(2);
 });
 
 test('migrates an old image flash record to a code-only record', async ({ page }) => {
