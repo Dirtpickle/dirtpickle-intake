@@ -1,6 +1,6 @@
 {
  "version": 1,
- "updatedAt": "2026-11-26T11:44:31.343Z",
+ "updatedAt": "2026-11-26T12:02:39.256Z",
  "event": "Black Friday Flash",
  "items": [
   {
@@ -46,7 +46,7 @@
    "price": "",
    "kind": "one-off",
    "sheet": "Unsorted",
-   "status": "available"
+   "status": "hold"
   },
   {
    "code": "NEW6",
