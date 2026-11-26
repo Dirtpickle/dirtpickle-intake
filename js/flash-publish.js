@@ -1,11 +1,20 @@
 "use strict";
 
 const FlashPublish = (() => {
-  let working = false;
+  let working = false, again = false;
 
+  // A change made while a publish is running asks for one more pass, so the newest state always reaches the site.
   async function run() {
-    if (working) return null;
+    if (working) { again = true; return null; }
     working = true;
+    try {
+      let reply;
+      do { again = false; reply = await publishOnce(); } while (again);
+      return reply;
+    } finally { working = false; }
+  }
+
+  async function publishOnce() {
     try {
       const all = Flash.list();
       const active = Events.getActive();
@@ -21,7 +30,7 @@ const FlashPublish = (() => {
       const s = DB.get("settings") || {};
       await DB.put({ ...s, flashPublishPending: true });
       throw e;
-    } finally { working = false; }
+    }
   }
 
   function status() {
