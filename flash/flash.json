@@ -1,6 +1,6 @@
 {
  "version": 1,
- "updatedAt": "2026-11-26T12:43:03.215Z",
+ "updatedAt": "2026-11-26T12:43:48.660Z",
  "event": "Black Friday Flash",
  "items": [
   {
@@ -43,8 +43,8 @@
    "code": "BLK5",
    "name": "",
    "image": "img/BLK5-fa9e6980.jpg",
-   "price": "",
-   "kind": "one-off",
+   "price": 100,
+   "kind": "repeatable",
    "sheet": "Unsorted",
    "status": "available"
   }
