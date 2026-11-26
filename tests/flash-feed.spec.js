@@ -63,17 +63,24 @@ test("old flash records without picture still migrate", async ({ page }) => {
   expect(result).toEqual({ picture: undefined, status: "available", kind: "one-off" });
 });
 
-test("bulk picture import matches normalized filenames and reports misses", async ({ page }) => {
+test("import, reorder, and assign codes in order", async ({ page }) => {
   await setup(page);
-  await page.evaluate(() => DB.put({ type: "flash", code: "CAT-1", kind: "one-off", status: "available" }));
   await page.evaluate(() => go("flashImport"));
   const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64");
   await page.locator("#flashFiles").setInputFiles([
-    { name: "cat1.png", mimeType: "image/png", buffer: png },
-    { name: "missing.png", mimeType: "image/png", buffer: png }
+    { name: "first-file.png", mimeType: "image/png", buffer: png },
+    { name: "second-file.png", mimeType: "image/png", buffer: png }
   ]);
-  await expect(page.locator("#flashImportResult")).toContainText("Updated: 1");
-  await expect(page.locator("#flashImportResult")).toContainText("New designs: 1");
-  await expect.poll(() => page.evaluate(() => !!FlashCode.find(Flash.list(), "MISSING")?.picture)).toBe(true);
-  await expect.poll(() => page.evaluate(() => DB.get(FlashCode.find(Flash.list(), "CAT1").id).picture?.startsWith("data:image/jpeg"))).toBe(true);
+  await expect(page.locator("#flashImportResult")).toContainText("New designs: 2");
+  await page.evaluate(() => go("flash"));
+  await page.locator('.fitem', { hasText: "NEW2" }).locator('[data-flash-action="up"]').click();
+  await expect.poll(() => page.evaluate(() => FlashOrder.sorted(Flash.list())[0].code)).toBe("NEW2");
+  await page.evaluate(() => go("flashCodes"));
+  await page.locator("#codesPrefix").fill("blk");
+  await page.locator("#codesGo").click();
+  await expect.poll(() => page.evaluate(() => FlashOrder.sorted(Flash.list()).map(f => f.code).join(","))).toBe("BLK1,BLK2");
+  const first = await page.evaluate(() => FlashOrder.sorted(Flash.list())[0].picture.slice(0, 10));
+  expect(first).toBe("data:image");
+  const feed = await page.evaluate(async () => (await FlashFeed.build(Flash.list())).items.map(i => i.code).join(","));
+  expect(feed).toBe("BLK1,BLK2");
 });

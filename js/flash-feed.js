@@ -12,7 +12,7 @@ const FlashFeed = (() => {
 
   async function build(items, { event = "", now = new Date() } = {}) {
     const output = [];
-    for (const f of items || []) {
+    for (const f of FlashOrder.sorted(items || [])) {
       if (f.status === "hidden") continue;
       const code = FlashCode.normalize(f.code || "");
       const digest = f.picture ? await hash(f.picture) : "";
