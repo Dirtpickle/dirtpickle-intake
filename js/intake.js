@@ -132,6 +132,8 @@ const Intake = (() => {
     for (const it of items) {
       try {
         const p = it.payload, d = p.client, now = new Date().toISOString();
+        // Finished earlier but the app was interrupted before the inbox item was cleared: just clear it, change nothing.
+        if (DB.get(p.consent.id)) { await DB.inboxRemove(it.id); already++; continue; }
         const scanOnly = !!p.scanOnly;
         let c = scanOnly ? ClientMatch.returning(d) : findDuplicate(d, null);
         if (scanOnly && !c) unmatchedReturning++;
@@ -139,21 +141,24 @@ const Intake = (() => {
           merged++;
           c = { ...c, phone: d.phone || c.phone, email: d.email || c.email, address: d.address || c.address, preferredName: d.preferredName || c.preferredName,
             emergencyName: d.emergencyName || c.emergencyName, emergencyPhone: d.emergencyPhone || c.emergencyPhone,
-            visits: [...(c.visits || []), p.submittedAt], updatedAt: now };
+            visits: (c.visits || []).includes(p.submittedAt) ? c.visits : [...(c.visits || []), p.submittedAt], updatedAt: now };
         } else c = { type: "client", ...d, ...(scanOnly ? { needsContact: true } : {}), notes: "", visits: [p.submittedAt], createdAt: p.submittedAt, updatedAt: now };
         if (p.client.licenseNumber) c.licenseNumber = p.client.licenseNumber;
-        if (p.idCheck) c.idChecks = [...(c.idChecks || []), p.idCheck];
-        if (p.idPhoto) c.idPhotos = [...(c.idPhotos || []), { at: p.submittedAt, image: p.idPhoto }].slice(-3);
+        if (p.idCheck && !(c.idChecks || []).some(x => x.at === p.idCheck.at)) c.idChecks = [...(c.idChecks || []), p.idCheck];
+        if (p.idPhoto && !(c.idPhotos || []).some(x => x.at === p.submittedAt)) c.idPhotos = [...(c.idPhotos || []), { at: p.submittedAt, image: p.idPhoto }].slice(-3);
         await DB.put(c);
         const f = p.session.flashId ? DB.get(p.session.flashId) : FlashCode.find(Flash.list(), p.session.flashCode);
         if (!p.session.flashId && p.session.flashCode && !f) unknownFlash++;
-        const conflict = !!(f && f.status !== "available");
+        const prior = DB.get(p.session.id); // set when an earlier, interrupted import got this far
+        const conflict = prior ? !!prior.flashConflict : !!(f && f.status !== "available");
         if (conflict) unmatchedFlash++;
         const sess = { type: "session", id: p.session.id, clientId: c.id, createdAt: p.submittedAt, status: "ready", tattoo: {}, segments: [],
           flashId: f ? f.id : null, flashCode: f ? f.code : (p.session.flashCode || ""), flashName: f ? `${f.code}${f.name ? " - " + f.name : ""}` : (p.session.flashCode || p.session.flashName || ""), price: f ? (f.price ?? "") : "", deposit: "", paid: "", payMethod: "", notes: "",
           consentId: p.consent.id, flashConflict: conflict, source: "intake" };
-        try { await DB.put(sess); } catch (_) { /* already imported */ }
-        if (f && !conflict) await Sessions.claim(f.id);
+        if (!prior) {
+          try { await DB.put(sess); } catch (_) { /* already imported */ }
+          if (f && !conflict) await Sessions.claim(f.id);
+        }
         const k = p.consent;
         try {
           await DB.put({ type: "consent", id: k.id, locked: true, clientId: c.id, sessionId: p.session.id, signedAt: k.signedAt,
