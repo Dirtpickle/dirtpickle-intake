@@ -11,7 +11,7 @@ const FlashSettings = (() => {
   };
   const OLD_INFO = "Claim a design in person at the shop. Unique designs can be held with a deposit; if one is not held, it goes to whoever gets it tattooed first.";
   const percent = v => { const n = Math.round(Number(v)); return Number.isFinite(n) && n >= 1 && n <= 100 ? n : DEFAULTS.depositPercent; };
-  const publicInfo = () => { const s = get(); return `${s.info} Unique and Limited edition designs are held with a ${s.depositPercent}% deposit; without one, a design goes to whoever gets it tattooed first.`.trim(); };
+  const publicInfo = () => { const s = get(); return `${s.info} Place a ${s.depositPercent}% deposit to hold a Unique or Limited edition design. Without a deposit, it goes to whoever gets it tattooed first.`.trim(); };
   function get() {
     const saved = (DB.get("settings") || {}).flash || {};
     const kind = Flash.KINDS.includes(saved.defaultKind) ? saved.defaultKind : DEFAULTS.defaultKind;
