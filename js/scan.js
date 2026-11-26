@@ -20,12 +20,15 @@ const Scan = (() => {
 
   async function start(video, onText, onMsg) {
     const say = m => { if (onMsg) onMsg(m); };
-    say(`Loading scanner… (${diag()})`);
-    const z = await lib();
+    stop(); // never hold two camera streams: a second request can hang forever on iPad
     say("Starting camera… tap Allow if asked.");
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false
-    });
+    const waiting = setTimeout(() => say("Still waiting for the camera. If there is no Allow question, open iPad Settings > Safari > Camera (or this app) and allow it, then come back. Or tap Take a photo."), 8000);
+    try {
+      // Ask for the camera first, straight from the screen opening, then load the scanner while it starts.
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+    } finally { clearTimeout(waiting); }
+    say(`Loading scanner… (${diag()})`);
+    let z; try { z = await lib(); } catch (e) { stop(); throw e; }
     video.muted = true; video.setAttribute("playsinline", "");
     video.srcObject = stream;
     try { await video.play(); } catch (e) { if (e.name !== "AbortError") throw e; }

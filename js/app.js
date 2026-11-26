@@ -44,7 +44,7 @@ let pendingScan = null;
 function go(name, params = {}, { fromPopstate = false, replace = false } = {}) {
   if (!DB.isUnlocked() && !INTAKE_SCREEN.test(name)) return; // second gate: locked means intake screens only
   if (name !== "scan" && name !== "clientForm") pendingScan = null;
-  if (cur.name === "scan") Scan.stop();
+  if (cur.name === "scan" || cur.name === "iScan") Scan.stop();
   if (fromPopstate) {
     Nav.replace(name, params);
   } else if (replace) {
