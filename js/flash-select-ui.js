@@ -2,7 +2,7 @@
 
 /* Selection-mode state and controls for the Flash gallery. */
 const FlashSelectUI = (() => {
-  let active = false, query = "", selected = new Set(), deleteArmed = false, notice = "", refocus = false;
+  let active = true, query = "", selected = new Set(), deleteArmed = false, notice = "", refocus = false;
   const matches = f => !query || `${f.code} ${f.name || ""}`.toLowerCase().includes(query.toLowerCase());
   const isActive = () => active;
   const search = () => query;
@@ -11,8 +11,7 @@ const FlashSelectUI = (() => {
   const controls = () => active ? `<div class="card flash-select-tools"><button class="small" data-select-all>Select all</button><button class="small" data-select-none>Select none</button></div>` : "";
   const bottom = () => active ? `<div class="flash-bulk-bar"><span>${selected.size} selected</span><div class="actions"><button class="small" data-bulk-action="delete">${deleteArmed ? "Tap again to delete" : "Delete"}</button><button class="small" data-bulk-action="repeatable">Make Repeatable</button><button class="small" data-bulk-action="one-off">Make One-off</button><button class="small" data-bulk-action="price">Set price</button><button class="small" data-bulk-action="sheet">Set sheet</button><button class="small" data-bulk-action="hold">Hold</button><button class="small" data-bulk-action="release">Release</button><button class="small" data-bulk-action="sold">Mark sold</button><button class="small" data-bulk-action="hide">Hide</button><button class="small" data-bulk-action="show">Show</button><button class="small" data-bulk-action="top">Move to top</button><button class="small" data-bulk-action="bottom">Move to bottom</button></div></div>` : "";
   function header() { const note = notice ? `<div class="banner warn">${esc(notice)}</div>` : ""; notice = ""; return `${note}<div class="flash-search"><label for="flashSearch">Search flash</label><input id="flashSearch" value="${esc(query)}" placeholder="Code or name"></div>`; }
-  function leave() { active = false; selected.clear(); deleteArmed = false; }
-  function toggle() { active = !active; selected.clear(); deleteArmed = false; }
+  function leave() { selected.clear(); deleteArmed = false; }
   function refresh() { go("flash"); }
   function publish() { if (typeof FlashPublish !== "undefined") FlashPublish.run().catch(() => {}); }
   function message(text) { notice = notice ? `${notice} ${text}` : text; }
@@ -32,7 +31,6 @@ const FlashSelectUI = (() => {
     refresh();
   }
   async function handleClick(e) {
-    if (e.target.closest("#flashSelect")) { toggle(); refresh(); return true; }
     if (!active) return false;
     const input = e.target.closest("#flashSearch");
     if (input) return false;
@@ -47,8 +45,6 @@ const FlashSelectUI = (() => {
     return false;
   }
   function bind(root) {
-    const actions = root.querySelector(".actions");
-    if (actions && !$("#flashSelect", root)) actions.insertAdjacentHTML("beforeend", '<button class="small" id="flashSelect">Select</button>');
     const bar = root.querySelector("header.bar");
     if (bar && !$("#flashSearch", root)) bar.insertAdjacentHTML("afterend", header());
     if (active) {
@@ -57,15 +53,14 @@ const FlashSelectUI = (() => {
       root.querySelectorAll(".fitem[data-id]").forEach(card => {
         if (card.querySelector("[data-flash-select]")) return;
         card.insertAdjacentHTML("afterbegin", tick({ id: card.dataset.id, code: card.querySelector(".flash-code")?.textContent || "" }));
+        card.querySelector(".actions")?.insertAdjacentHTML("afterbegin", `<button class="small" data-go="flashEdit" data-id="${esc(card.dataset.id)}">Edit</button>`);
       });
-      if (!root.querySelector(".flash-bulk-bar")) root.insertAdjacentHTML("beforeend", bottom());
+      if (selected.size && !root.querySelector(".flash-bulk-bar")) root.insertAdjacentHTML("beforeend", bottom());
       root.querySelectorAll("[data-flash-select]").forEach(input => input.checked = selected.has(input.dataset.flashSelect));
       root.querySelectorAll("[data-bulk-action]").forEach(button => button.disabled = selected.size === 0);
     }
     const input = $("#flashSearch", root);
     if (input) { input.oninput = () => { query = input.value; refocus = true; refresh(); }; if (refocus) { refocus = false; input.focus(); input.setSelectionRange(input.value.length, input.value.length); } }
-    const button = $("#flashSelect", root);
-    if (button) button.textContent = active ? "Done" : "Select";
   }
   return { isActive, search, matches, tick, header, controls, bottom, bind, handleClick, leave };
 })();

@@ -11,7 +11,6 @@ async function seed(page) {
 
 test("select all respects search and delete needs a second tap", async ({ page }) => {
   await setup(page); await seed(page); await page.evaluate(() => go("flash"));
-  await page.locator("#flashSelect").click();
   await page.locator("#flashSearch").fill("alpha");
   await page.getByRole("button", { name: "Select all" }).click();
   await expect(page.locator(".flash-bulk-bar")).toContainText("1 selected");
@@ -49,11 +48,20 @@ test("bulk kind and lifecycle actions skip repeatables", async ({ page }) => {
 
 test("search keeps focus while typing and the delete prompt stays visible", async ({ page }) => {
   await setup(page); await seed(page); await page.evaluate(() => go("flash"));
-  await page.locator("#flashSelect").click();
   await page.locator("#flashSearch").pressSequentially("alp");
   await expect(page.locator("#flashSearch")).toBeFocused();
   await expect(page.locator("#flashSearch")).toHaveValue("alp");
   await page.getByRole("button", { name: "Select all" }).click();
   await page.getByRole("button", { name: "Delete", exact: true }).click();
   await expect(page.locator(".banner.warn")).toContainText("Delete 1 designs?");
+});
+
+test("tick boxes are always there, the bar appears only with a selection, Edit opens the editor", async ({ page }) => {
+  await setup(page); await seed(page); await page.evaluate(() => go("flash"));
+  await expect(page.locator("[data-flash-select]")).toHaveCount(3);
+  await expect(page.locator(".flash-bulk-bar")).toHaveCount(0);
+  await page.locator("[data-flash-select]").first().check();
+  await expect(page.locator(".flash-bulk-bar")).toContainText("1 selected");
+  await page.locator('.fitem button[data-go="flashEdit"]').first().click();
+  await expect(page.locator("#f_code")).toBeVisible();
 });
