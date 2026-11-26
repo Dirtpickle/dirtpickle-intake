@@ -1,112 +1,76 @@
 {
  "version": 1,
- "updatedAt": "2026-11-26T01:55:04.353Z",
+ "updatedAt": "2026-11-26T11:44:31.343Z",
  "event": "Black Friday Flash",
  "items": [
   {
-   "code": "BLK1",
+   "code": "NEW1",
    "name": "",
-   "image": "img/BLK1-586e4bcf.jpg",
-   "price": 50,
-   "kind": "repeatable",
-   "sheet": "Unsorted",
-   "status": "available"
-  },
-  {
-   "code": "BLK2",
-   "name": "",
-   "image": "img/BLK2-1d30e957.jpg",
-   "price": 60,
-   "kind": "repeatable",
-   "sheet": "Unsorted",
-   "status": "available"
-  },
-  {
-   "code": "BLK3",
-   "name": "Test design 3",
-   "image": "img/BLK3-1dd225e2.jpg",
-   "price": 70,
-   "kind": "repeatable",
-   "sheet": "Unsorted",
-   "status": "available"
-  },
-  {
-   "code": "BLK4",
-   "name": "",
-   "image": "img/BLK4-a62769f7.jpg",
-   "price": 80,
-   "kind": "repeatable",
-   "sheet": "Unsorted",
-   "status": "available"
-  },
-  {
-   "code": "BLK5",
-   "name": "",
-   "image": "img/BLK5-f7f3e7a6.jpg",
-   "price": 90,
-   "kind": "repeatable",
-   "sheet": "Unsorted",
-   "status": "available"
-  },
-  {
-   "code": "BLK6",
-   "name": "Test design 6",
-   "image": "img/BLK6-4a6edf4d.jpg",
-   "price": 100,
-   "kind": "repeatable",
-   "sheet": "Unsorted",
-   "status": "available"
-  },
-  {
-   "code": "BLK7",
-   "name": "",
-   "image": "img/BLK7-6ae01837.jpg",
-   "price": 110,
-   "kind": "one-off",
-   "sheet": "Unsorted",
-   "status": "available"
-  },
-  {
-   "code": "BLK8",
-   "name": "",
-   "image": "img/BLK8-6aadacc4.jpg",
-   "price": 120,
-   "kind": "one-off",
-   "sheet": "Unsorted",
-   "status": "available"
-  },
-  {
-   "code": "BLK9",
-   "name": "Test design 9",
-   "image": "img/BLK9-fb6c100d.jpg",
-   "price": 130,
+   "image": "img/NEW1-6d0f0a4b.jpg",
+   "price": "",
    "kind": "one-off",
    "sheet": "Unsorted",
    "status": "sold"
   },
   {
-   "code": "BLK10",
+   "code": "NEW2",
    "name": "",
-   "image": "img/BLK10-1533a933.jpg",
-   "price": 140,
-   "kind": "one-off",
-   "sheet": "Unsorted",
-   "status": "hold"
-  },
-  {
-   "code": "BLK11",
-   "name": "",
-   "image": "img/BLK11-efe0b90c.jpg",
-   "price": 150,
+   "image": "img/NEW2-3736d657.jpg",
+   "price": "",
    "kind": "one-off",
    "sheet": "Unsorted",
    "status": "available"
   },
   {
-   "code": "BLK12",
-   "name": "Test design 12",
-   "image": "img/BLK12-2f318f8e.jpg",
-   "price": 160,
+   "code": "NEW3",
+   "name": "",
+   "image": "img/NEW3-9ff0505a.jpg",
+   "price": "",
+   "kind": "one-off",
+   "sheet": "Unsorted",
+   "status": "available"
+  },
+  {
+   "code": "NEW4",
+   "name": "",
+   "image": "img/NEW4-73129d41.jpg",
+   "price": "",
+   "kind": "one-off",
+   "sheet": "Unsorted",
+   "status": "available"
+  },
+  {
+   "code": "NEW5",
+   "name": "",
+   "image": "img/NEW5-ced47757.jpg",
+   "price": "",
+   "kind": "one-off",
+   "sheet": "Unsorted",
+   "status": "available"
+  },
+  {
+   "code": "NEW6",
+   "name": "",
+   "image": "img/NEW6-21b948ba.jpg",
+   "price": "",
+   "kind": "one-off",
+   "sheet": "Unsorted",
+   "status": "available"
+  },
+  {
+   "code": "NEW7",
+   "name": "",
+   "image": "img/NEW7-4d24f15e.jpg",
+   "price": "",
+   "kind": "one-off",
+   "sheet": "Unsorted",
+   "status": "available"
+  },
+  {
+   "code": "NEW8",
+   "name": "",
+   "image": "img/NEW8-4c47d4a5.jpg",
+   "price": "",
    "kind": "one-off",
    "sheet": "Unsorted",
    "status": "available"
