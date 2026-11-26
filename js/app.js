@@ -138,7 +138,7 @@ async function submitPin(mode, pin) {
 }
 /* The intake side may only read this non-private data: form wording, business name, minimum age, available flash. */
 async function publishPublic() {
-  const flash = Flash.list().filter(f => f.status === "available").map(({ id, code, name, sheet, price, minutes, kind }) => ({ id, code, name, sheet, price, minutes, kind }));
+  const flash = Flash.list().filter(Flash.available).map(({ id, code, name, sheet, price, minutes, kind }) => ({ id, code, name, sheet, price, minutes, kind }));
   await DB.setPublic({ business: settings.business, artistName: settings.artistName, minAge: settings.minAge, template: Consent.activeTemplate(),
     relayConfigured: Mailer.configured(Mailer.relayFromSettings()), flash, at: new Date().toISOString() });
 }

@@ -21,9 +21,10 @@ const FlashBulk = (() => {
     if (action === "top" || action === "bottom") return move(action, ids);
     let changed = 0, skipped = 0;
     for (const item of selected) {
-      if (["hold", "release", "sold"].includes(action) && item.kind === "repeatable") { skipped++; continue; }
+      if (["hold", "release", "sold"].includes(action) && ["repeatable", "limited"].includes(item.kind)) { skipped++; continue; }
       if (action === "repeatable") await save(item, { kind: "repeatable", status: "available", reservedFor: null, purchase: null });
       else if (action === "one-off") await save(item, { kind: "one-off", status: item.kind === "repeatable" ? "available" : item.status });
+      else if (action === "limited") { const quantity = item.quantity || FlashSettings.get().defaultQuantity; await save(item, { kind: "limited", quantity, sold: item.sold || 0, status: (item.sold || 0) >= quantity ? "sold" : "available", reservedFor: null, purchase: null }); }
       else if (action === "price") await save(item, { price: value });
       else if (action === "sheet") await save(item, { sheet: value || "Unsorted" });
       else if (action === "hold") await Flash.hold(item.id);

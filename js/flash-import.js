@@ -10,7 +10,8 @@ const FlashImport = (() => {
       try {
         const picture = await FlashPicture.jpeg(file);
         const code = `NEW${order}`;
-        await DB.put({ type: "flash", code, name: "", sheet: "Unsorted", kind: "repeatable", price: "100", minutes: "", status: "available", purchase: null, picture, order });
+        const defaults = FlashSettings.get();
+        await DB.put({ type: "flash", code, name: "", sheet: "Unsorted", kind: defaults.defaultKind, price: defaults.defaultPrice, ...(defaults.defaultKind === "limited" ? { quantity: defaults.defaultQuantity, sold: 0 } : {}), minutes: "", status: "available", purchase: null, picture, order });
         result.created.push(code); order += 1;
       } catch (e) { result.failed.push(file.name); }
     }

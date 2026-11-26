@@ -9,7 +9,7 @@ const FlashSelectUI = (() => {
   const selectedIds = () => [...selected];
   const tick = f => active ? `<label class="flash-tick"><input type="checkbox" data-flash-select="${esc(f.id)}" ${selected.has(f.id) ? "checked" : ""} aria-label="Select ${esc(f.code)}"></label>` : "";
   const controls = () => active ? `<div class="card flash-select-tools"><button class="small" data-select-all>Select all</button><button class="small" data-select-none>Select none</button></div>` : "";
-  const bottom = () => active ? `<div class="flash-bulk-bar"><span>${selected.size} selected</span><div class="actions"><button class="small" data-bulk-action="delete">${deleteArmed ? "Tap again to delete" : "Delete"}</button><button class="small" data-bulk-action="repeatable">Make Repeatable</button><button class="small" data-bulk-action="one-off">Make One-off</button><button class="small" data-bulk-action="price">Set price</button><button class="small" data-bulk-action="sheet">Set sheet</button><button class="small" data-bulk-action="hold">Hold</button><button class="small" data-bulk-action="release">Release</button><button class="small" data-bulk-action="sold">Mark sold</button><button class="small" data-bulk-action="hide">Hide</button><button class="small" data-bulk-action="show">Show</button><button class="small" data-bulk-action="top">Move to top</button><button class="small" data-bulk-action="bottom">Move to bottom</button></div></div>` : "";
+  const bottom = () => active ? `<div class="flash-bulk-bar"><span>${selected.size} selected</span><div class="actions"><button class="small" data-bulk-action="delete">${deleteArmed ? "Tap again to delete" : "Delete"}</button><button class="small" data-bulk-action="repeatable">Make Repeatable</button><button class="small" data-bulk-action="one-off">Make Unique</button><button class="small" data-bulk-action="limited">Make Limited edition</button><button class="small" data-bulk-action="price">Set price</button><button class="small" data-bulk-action="sheet">Set sheet</button><button class="small" data-bulk-action="hold">Hold</button><button class="small" data-bulk-action="release">Release</button><button class="small" data-bulk-action="sold">Mark sold</button><button class="small" data-bulk-action="hide">Hide</button><button class="small" data-bulk-action="show">Show</button><button class="small" data-bulk-action="top">Move to top</button><button class="small" data-bulk-action="bottom">Move to bottom</button></div></div>` : "";
   function header() { const note = notice ? `<div class="banner warn">${esc(notice)}</div>` : ""; notice = ""; return `${note}<div class="flash-search"><label for="flashSearch">Search flash</label><input id="flashSearch" value="${esc(query)}" placeholder="Code or name"></div>`; }
   function leave() { selected.clear(); deleteArmed = false; }
   function refresh() { go("flash"); }
@@ -25,7 +25,7 @@ const FlashSelectUI = (() => {
     if (action === "sheet") { value = prompt("Sheet for selected designs", ""); if (value === null) return; value = value.trim(); }
     const result = await FlashBulk.apply(action, ids, value);
     if (result.refused?.length) message(`Could not delete: ${result.refused.map(item => item.code).join(", ")} is used by a session.`);
-    if (result.skipped) message(`${result.skipped} repeatable design${result.skipped === 1 ? "" : "s"} skipped.`);
+    if (result.skipped) message(`${result.skipped} repeatable or limited design${result.skipped === 1 ? "" : "s"} skipped.`);
     if (result.changed) publish();
     selected.clear();
     refresh();

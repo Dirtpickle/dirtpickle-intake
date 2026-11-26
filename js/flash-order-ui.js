@@ -5,7 +5,7 @@ screens.flashCodes = {
   html() {
     const count = Flash.list().length, locked = FlashOrder.locked();
     const warn = locked ? `<div class="banner warn">Your codes are already on the website. Renumbering changes them there too.</div><label><input id="codesSure" type="checkbox"> I'm sure, renumber</label>` : "";
-    return `${bar("Assign codes", { back: "flash" })}<div class="card"><p class="mute">Gives all ${count} designs a code in their current order, like BLK1, BLK2, BLK3. Move designs up or down in the Flash list first.</p><label for="codesPrefix">Prefix</label><input id="codesPrefix" value="BLK" autocapitalize="characters">${warn}<div id="codesMsg"></div><button class="primary" id="codesGo">Assign codes</button></div>`;
+    return `${bar("Assign codes", { back: "flash" })}<div class="card"><p class="mute">Gives all ${count} designs a code in their current order, like BLK1, BLK2, BLK3. Move designs up or down in the Flash list first.</p><label for="codesPrefix">Prefix</label><input id="codesPrefix" value="${esc(FlashSettings.get().prefix)}" autocapitalize="characters">${warn}<div id="codesMsg"></div><button class="primary" id="codesGo">Assign codes</button></div>`;
   },
   bind(root) {
     $("#codesGo", root).onclick = async () => {

@@ -12,6 +12,7 @@ const FlashStore = (() => {
   async function markSold(flashId, purchase) {
     const item = Flash.get(flashId);
     if (!item) return { ok: false, reason: "not-found" };
+    if (item.kind === "limited") return { ok: true, flash: await Flash.sellOne(flashId) };
     const next = await DB.put({ ...item, status: "sold", purchase: {
       source: purchase?.source || "shop", orderId: purchase?.orderId || "", at: purchase?.at || new Date().toISOString()
     } });
