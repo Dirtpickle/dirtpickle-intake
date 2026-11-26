@@ -1,6 +1,6 @@
 {
  "version": 1,
- "updatedAt": "2026-11-26T21:49:58.479Z",
+ "updatedAt": "2026-11-26T22:04:42.860Z",
  "event": "Black Friday Flash",
  "info": "Claim a design in person at the shop. Unique designs are held with a 50% deposit; without one, a design goes to whoever gets it tattooed first.",
  "items": [
@@ -98,6 +98,105 @@
    "code": "BLK11",
    "name": "",
    "image": "img/BLK11-bd8faa1c.jpg",
+   "price": 100,
+   "kind": "repeatable",
+   "sheet": "Unsorted",
+   "status": "available"
+  },
+  {
+   "code": "NEW14",
+   "name": "",
+   "image": "img/NEW14-39b7e859.jpg",
+   "price": 100,
+   "kind": "repeatable",
+   "sheet": "Unsorted",
+   "status": "available"
+  },
+  {
+   "code": "NEW15",
+   "name": "",
+   "image": "img/NEW15-638adb21.jpg",
+   "price": 100,
+   "kind": "repeatable",
+   "sheet": "Unsorted",
+   "status": "available"
+  },
+  {
+   "code": "NEW16",
+   "name": "",
+   "image": "img/NEW16-b6cbc36c.jpg",
+   "price": 100,
+   "kind": "repeatable",
+   "sheet": "Unsorted",
+   "status": "available"
+  },
+  {
+   "code": "NEW17",
+   "name": "",
+   "image": "img/NEW17-84c5b774.jpg",
+   "price": 100,
+   "kind": "repeatable",
+   "sheet": "Unsorted",
+   "status": "available"
+  },
+  {
+   "code": "NEW18",
+   "name": "",
+   "image": "img/NEW18-036d5b84.jpg",
+   "price": 100,
+   "kind": "repeatable",
+   "sheet": "Unsorted",
+   "status": "available"
+  },
+  {
+   "code": "NEW19",
+   "name": "",
+   "image": "img/NEW19-716ffab2.jpg",
+   "price": 100,
+   "kind": "repeatable",
+   "sheet": "Unsorted",
+   "status": "available"
+  },
+  {
+   "code": "NEW20",
+   "name": "",
+   "image": "img/NEW20-bfdcb596.jpg",
+   "price": 100,
+   "kind": "repeatable",
+   "sheet": "Unsorted",
+   "status": "available"
+  },
+  {
+   "code": "NEW21",
+   "name": "",
+   "image": "img/NEW21-de9ecb52.jpg",
+   "price": 100,
+   "kind": "repeatable",
+   "sheet": "Unsorted",
+   "status": "available"
+  },
+  {
+   "code": "NEW22",
+   "name": "",
+   "image": "img/NEW22-73e0c0d6.jpg",
+   "price": 100,
+   "kind": "repeatable",
+   "sheet": "Unsorted",
+   "status": "available"
+  },
+  {
+   "code": "NEW23",
+   "name": "",
+   "image": "img/NEW23-a73f2fff.jpg",
+   "price": 100,
+   "kind": "repeatable",
+   "sheet": "Unsorted",
+   "status": "available"
+  },
+  {
+   "code": "NEW24",
+   "name": "",
+   "image": "img/NEW24-3dd6837a.jpg",
    "price": 100,
    "kind": "repeatable",
    "sheet": "Unsorted",
