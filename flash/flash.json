@@ -1,6 +1,6 @@
 {
  "version": 1,
- "updatedAt": "2026-11-26T18:23:12.983Z",
+ "updatedAt": "2026-11-26T18:23:29.713Z",
  "event": "Black Friday Flash",
  "info": "Claim a design in person at the shop. Unique designs are held with a 50% deposit; without one, a design goes to whoever gets it tattooed first.",
  "items": [
@@ -17,7 +17,7 @@
    "code": "BLK3",
    "name": "",
    "image": "img/BLK3-66a9f370.jpg",
-   "price": "",
+   "price": 100,
    "kind": "repeatable",
    "sheet": "Unsorted",
    "status": "available"
@@ -26,7 +26,7 @@
    "code": "BLK4",
    "name": "",
    "image": "img/BLK4-3a0ebd08.jpg",
-   "price": "",
+   "price": 100,
    "kind": "repeatable",
    "sheet": "Unsorted",
    "status": "available"
@@ -35,7 +35,7 @@
    "code": "BLK5",
    "name": "",
    "image": "img/BLK5-fa9e6980.jpg",
-   "price": "",
+   "price": 100,
    "kind": "repeatable",
    "sheet": "Unsorted",
    "status": "available"
