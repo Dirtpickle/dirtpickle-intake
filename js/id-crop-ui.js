@@ -50,24 +50,31 @@ const IdCropUI = (() => {
         context.fillRect(0, 0, canvas.width, canvas.height);
         context.clearRect(rect.x, rect.y, rect.w, rect.h);
         context.drawImage(source, rect.x, rect.y, rect.w, rect.h, rect.x, rect.y, rect.w, rect.h);
-        context.strokeStyle = "#ff2d8f"; context.lineWidth = Math.max(3, canvas.width / 300); context.strokeRect(rect.x, rect.y, rect.w, rect.h);
+        const px = scale(); context.strokeStyle = "#ff2d8f"; context.lineWidth = 3 * px; context.strokeRect(rect.x, rect.y, rect.w, rect.h);
         context.fillStyle = "#fff";
-        for (const point of handles(rect)) { context.beginPath(); context.arc(point.x, point.y, Math.max(8, canvas.width / 70), 0, Math.PI * 2); context.fill(); }
+        for (const point of handles(rect)) { context.beginPath(); context.arc(point.x, point.y, 13 * px, 0, Math.PI * 2); context.fill(); context.stroke(); }
       };
+      const scale = () => canvas.width / Math.max(1, canvas.clientWidth);
       const handles = r => [
         { x: r.x, y: r.y, name: "nw" }, { x: r.x + r.w / 2, y: r.y, name: "n" }, { x: r.x + r.w, y: r.y, name: "ne" },
         { x: r.x + r.w, y: r.y + r.h / 2, name: "e" }, { x: r.x + r.w, y: r.y + r.h, name: "se" },
         { x: r.x + r.w / 2, y: r.y + r.h, name: "s" }, { x: r.x, y: r.y + r.h, name: "sw" }, { x: r.x, y: r.y + r.h / 2, name: "w" }
       ];
       const imagePoint = event => { const box = canvas.getBoundingClientRect(); return { x: (event.clientX - box.left) * canvas.width / box.width, y: (event.clientY - box.top) * canvas.height / box.height }; };
+      /* Corners first, then edges (drag anywhere along a side), then the inside moves the whole box. Touch targets are ~30px on screen. */
       const hit = point => {
-        const tolerance = canvas.width / Math.max(12, canvas.clientWidth / 26);
-        const handle = handles(rect).find(h => Math.hypot(h.x - point.x, h.y - point.y) < tolerance);
-        if (handle) return { type: handle.name, x: point.x, y: point.y, rect: { ...rect } };
-        if (point.x >= rect.x && point.x <= rect.x + rect.w && point.y >= rect.y && point.y <= rect.y + rect.h) return { type: "move", x: point.x, y: point.y, rect: { ...rect } };
+        const tol = 30 * scale(), start = type => ({ type, x: point.x, y: point.y, rect: { ...rect } });
+        const corner = handles(rect).find(h => h.name.length === 2 && Math.hypot(h.x - point.x, h.y - point.y) < tol);
+        if (corner) return start(corner.name);
+        const right = rect.x + rect.w, bottom = rect.y + rect.h;
+        const inX = point.x > rect.x - tol && point.x < right + tol, inY = point.y > rect.y - tol && point.y < bottom + tol;
+        const edges = [["n", inX && Math.abs(point.y - rect.y)], ["s", inX && Math.abs(point.y - bottom)], ["w", inY && Math.abs(point.x - rect.x)], ["e", inY && Math.abs(point.x - right)]]
+          .filter(([, d]) => d !== false && d < tol).sort((p, q) => p[1] - q[1]);
+        if (edges.length) return start(edges[0][0]);
+        if (point.x >= rect.x && point.x <= right && point.y >= rect.y && point.y <= bottom) return start("move");
         return null;
       };
-      canvas.onpointerdown = event => { pointer = hit(imagePoint(event)); if (pointer) canvas.setPointerCapture(event.pointerId); };
+      canvas.onpointerdown = event => { event.preventDefault(); pointer = hit(imagePoint(event)); if (pointer) canvas.setPointerCapture(event.pointerId); };
       canvas.onpointermove = event => {
         if (!pointer) return;
         const point = imagePoint(event), dx = point.x - pointer.x, dy = point.y - pointer.y, base = pointer.rect;

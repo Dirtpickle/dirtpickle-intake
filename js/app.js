@@ -240,7 +240,7 @@ function idPanel(sc) {
 screens.scan = {
   html: ({ id }) => `${bar("Scan driver's license", { back: "clientForm", backId: id })}
     <div class="card" style="padding:0;overflow:hidden;position:relative">
-      <video id="cam" playsinline muted style="width:100%;display:block;background:#000;min-height:260px"></video></div>
+      <video id="cam" playsinline muted autoplay style="width:100%;display:block;background:#000;min-height:260px"></video></div>
     <div id="scanMsg" class="banner warn">Hold the BACK of the license (the barcode) flat in view, close, in good light.</div>
     <div class="actions"><label class="btn" style="display:inline-flex;align-items:center">Take a photo instead
       <input id="photo" type="file" accept="image/*" capture="environment" hidden></label>

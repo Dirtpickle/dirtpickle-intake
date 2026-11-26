@@ -26,8 +26,10 @@ const Scan = (() => {
     stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false
     });
+    video.muted = true; video.setAttribute("playsinline", "");
     video.srcObject = stream;
-    await video.play();
+    try { await video.play(); } catch (e) { if (e.name !== "AbortError") throw e; }
+    setTimeout(() => { if (running && !video.videoWidth) say("Camera is on but sent no picture. Close other apps using the camera, then try again, or tap Take a photo."); }, 3000);
     // Only ask for autofocus where supported: on Firefox applyConstraints silently drops the camera to 640x480.
     try { const tr = stream.getVideoTracks()[0], caps = tr.getCapabilities ? tr.getCapabilities() : {}; if (caps.focusMode && caps.focusMode.includes("continuous")) await tr.applyConstraints({ advanced: [{ focusMode: "continuous" }] }); } catch (_) {}
     const canvas = document.createElement("canvas");
@@ -42,7 +44,7 @@ const Scan = (() => {
           const secs = Math.round((Date.now() - t0) / 1000);
           say(`Camera on (${video.videoWidth}×${video.videoHeight}). Scanning… ${tries} tries. ` + (secs > 10 ? "Still looking: move the card closer or farther until the barcode is sharp, avoid glare, or tap Take a photo instead." : "Hold the BACK of the license flat, about 6 to 8 inches away."));
         }
-        const scale = Math.min(1, 1600 / video.videoWidth);
+        const scale = Math.min(1, 1280 / video.videoWidth);
         canvas.width = Math.round(video.videoWidth * scale); canvas.height = Math.round(video.videoHeight * scale);
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         try {

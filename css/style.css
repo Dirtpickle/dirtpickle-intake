@@ -61,7 +61,8 @@ canvas.sig { width:100%; height:260px; background:#fff; border-radius:14px; touc
 .id-crop-screen { position:fixed; inset:0; z-index:20; overflow:auto; padding:20px; background:rgba(0,0,0,.96); }
 .id-crop-panel { max-width:900px; margin:0 auto; }
 .id-crop-panel h2 { margin:0 0 6px; }
-.id-crop-canvas { display:block; width:100%; max-height:68vh; object-fit:contain; background:#222; border-radius:12px; touch-action:none; }
+.id-crop-panel .actions { position:sticky; bottom:0; padding:12px 0; background:rgba(0,0,0,.96); }
+.id-crop-canvas { display:block; width:auto; height:auto; max-width:100%; max-height:62vh; margin:0 auto; background:#222; border-radius:12px; touch-action:none; }
 
 /* queue / flash / timer */
 .stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(130px,1fr)); gap:12px; margin-bottom:16px; }
