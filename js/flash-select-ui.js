@@ -48,7 +48,7 @@ const FlashSelectUI = (() => {
     const bar = root.querySelector("header.bar");
     if (bar && !$("#flashSearch", root)) bar.insertAdjacentHTML("afterend", header());
     if (active) {
-      const list = root.querySelector(".fgrid");
+      const list = root.querySelector(".fgroup, .fgrid");
       if (list && !root.querySelector(".flash-select-tools")) list.insertAdjacentHTML("beforebegin", controls());
       root.querySelectorAll(".fitem[data-id]").forEach(card => {
         if (card.querySelector("[data-flash-select]")) return;

@@ -3,7 +3,10 @@
 /* Flash order and codes. A design's place in the list is its `order`; "Assign codes" numbers codes from that order. */
 const FlashOrder = (() => {
   const rank = f => Number.isFinite(f.order) ? f.order : Number.MAX_SAFE_INTEGER;
-  const sorted = list => [...list].sort((a, b) => rank(a) - rank(b) || String(a.code).localeCompare(String(b.code)));
+  const GROUPS = ["repeatable", "limited", "one-off"];
+  const group = f => { const i = GROUPS.indexOf(f.kind); return i < 0 ? GROUPS.length - 1 : i; };
+  // Same order everywhere (app list, codes, website): Repeatable, then Limited edition, then Unique; your own order inside each.
+  const sorted = list => [...list].sort((a, b) => group(a) - group(b) || rank(a) - rank(b) || String(a.code).localeCompare(String(b.code)));
   const nextOrder = () => Math.max(0, ...Flash.list().map(f => Number.isFinite(f.order) ? f.order : 0)) + 1;
   const locked = () => !!(DB.get("settings") || {}).flashPublishedAt;
   const cleanPrefix = text => String(text || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
@@ -30,5 +33,5 @@ const FlashOrder = (() => {
     return all.length;
   }
 
-  return { sorted, nextOrder, locked, move, assignCodes, cleanPrefix };
+  return { GROUPS, sorted, nextOrder, locked, move, assignCodes, cleanPrefix };
 })();

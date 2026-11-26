@@ -14,9 +14,9 @@ test("public flash feed allowlists fields, maps status and excludes hidden", asy
     return { feed, keys: Object.keys(feed.items[0]).sort(), images: await FlashFeed.images(rows) };
   });
   expect(result.feed).toMatchObject({ version: 1, updatedAt: "2026-11-27T10:00:00.000Z", event: "Friday" });
-  expect(result.feed.items.map(i => i.status)).toEqual(["hold", "available"]);
+  expect(result.feed.items.map(i => i.status)).toEqual(["available", "hold"]);
   expect(result.keys).toEqual(["code", "image", "kind", "name", "price", "sheet", "status"]);
-  expect(result.feed.items[0].image).toMatch(/^img\/HOLD1-[0-9a-f]{8}\.jpg$/);
+  expect(result.feed.items[1].image).toMatch(/^img\/HOLD1-[0-9a-f]{8}\.jpg$/);
   expect(result.images[0].base64).toBe("/9j/4AAQSkZJRg==");
 });
 

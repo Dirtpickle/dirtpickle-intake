@@ -139,3 +139,4 @@ select { width:100%; font:inherit; padding:15px; background:var(--panel); color:
 .flash-top { margin-top:0; gap:8px; } .flash-top button { flex:1 1 auto; }
 .fitem .actions { gap:6px; margin-top:8px; } .fitem .actions button { flex:1 1 auto; }
 .fitem strong.flash-code { font-size:18px; }
+.fgroup { margin:18px 0 8px; font-size:20px; }
