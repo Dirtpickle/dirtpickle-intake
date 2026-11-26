@@ -1,22 +1,23 @@
 {
  "version": 1,
- "updatedAt": "2026-11-26T12:44:42.423Z",
+ "updatedAt": "2026-11-26T13:30:16.922Z",
  "event": "Black Friday Flash",
+ "info": "",
  "items": [
   {
    "code": "BLK1",
    "name": "",
-   "image": "img/BLK1-b6b4052d.jpg",
-   "price": 80,
-   "kind": "repeatable",
+   "image": "img/BLK1-1d736e69.jpg",
+   "price": "",
+   "kind": "one-off",
    "sheet": "Unsorted",
    "status": "available"
   },
   {
    "code": "BLK2",
    "name": "",
-   "image": "img/BLK2-1d736e69.jpg",
-   "price": 120,
+   "image": "img/BLK2-b6b4052d.jpg",
+   "price": "",
    "kind": "one-off",
    "sheet": "Unsorted",
    "status": "available"
@@ -25,7 +26,7 @@
    "code": "BLK3",
    "name": "",
    "image": "img/BLK3-66a9f370.jpg",
-   "price": 120,
+   "price": "",
    "kind": "one-off",
    "sheet": "Unsorted",
    "status": "available"
@@ -34,7 +35,7 @@
    "code": "BLK4",
    "name": "",
    "image": "img/BLK4-3a0ebd08.jpg",
-   "price": 120,
+   "price": "",
    "kind": "one-off",
    "sheet": "Unsorted",
    "status": "available"
@@ -43,8 +44,8 @@
    "code": "BLK5",
    "name": "",
    "image": "img/BLK5-fa9e6980.jpg",
-   "price": 100,
-   "kind": "repeatable",
+   "price": "",
+   "kind": "one-off",
    "sheet": "Unsorted",
    "status": "available"
   }
