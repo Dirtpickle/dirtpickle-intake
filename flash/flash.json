@@ -1,6 +1,6 @@
 {
  "version": 1,
- "updatedAt": "2026-11-26T12:43:48.660Z",
+ "updatedAt": "2026-11-26T12:44:18.949Z",
  "event": "Black Friday Flash",
  "items": [
   {
@@ -34,7 +34,7 @@
    "code": "BLK4",
    "name": "",
    "image": "img/BLK4-3a0ebd08.jpg",
-   "price": "",
+   "price": 120,
    "kind": "one-off",
    "sheet": "Unsorted",
    "status": "available"
