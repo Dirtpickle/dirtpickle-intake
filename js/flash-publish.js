@@ -18,7 +18,7 @@ const FlashPublish = (() => {
     try {
       const all = Flash.list();
       const active = Events.getActive();
-      const feed = await FlashFeed.build(all, { event: active ? active.name : "", info: FlashSettings.get().info });
+      const feed = await FlashFeed.build(all, { event: active ? active.name : "", info: FlashSettings.publicInfo() });
       const images = await FlashFeed.images(all);
       // 1) ask what the repo already has, 2) send only new pictures one at a time, 3) send the feed last so it never points at a missing picture.
       const have = new Set((await SyncRelay.publish({ action: "flash.list" })).have || []);
