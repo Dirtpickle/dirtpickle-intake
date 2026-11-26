@@ -16,6 +16,7 @@ const PinPrompt = (() => {
         <p class="mute" style="font-size:15px;margin-top:18px">${esc(hint)}</p>
         <button class="ghost small" data-k="cancel" style="margin-top:10px">Cancel</button></div>`;
       document.body.appendChild(box);
+      document.activeElement?.blur?.();
       const done = value => { box.remove(); resolve(value); };
       box.onclick = e => {
         const k = e.target.closest("button[data-k]")?.dataset.k;
