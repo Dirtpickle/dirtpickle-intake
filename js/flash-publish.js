@@ -2,16 +2,19 @@
 
 const FlashPublish = (() => {
   let working = false, again = false;
+  const tell = phase => document.dispatchEvent(new CustomEvent("flashpublish", { detail: { phase } }));
 
   // A change made while a publish is running asks for one more pass, so the newest state always reaches the site.
   async function run() {
     if (working) { again = true; return null; }
     working = true;
+    tell("working");
     try {
       let reply;
       do { again = false; reply = await publishOnce(); } while (again);
+      tell("done");
       return reply;
-    } finally { working = false; }
+    } catch (e) { tell("failed"); throw e; } finally { working = false; }
   }
 
   async function publishOnce() {

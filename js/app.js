@@ -147,7 +147,7 @@ let intakeReady = false;
 let syncModulesLoaded = false;
 async function loadSyncModules() {
   if (syncModulesLoaded) return;
-  for (const src of ["js/sync-relay.js", "js/sync-marks.js", "js/sync-engine.js", "js/sync-auto.js", "js/sync-ui.js", "js/flash-publish.js"]) await new Promise((resolve, reject) => {
+  for (const src of ["js/sync-relay.js", "js/sync-marks.js", "js/sync-engine.js", "js/sync-auto.js", "js/sync-ui.js", "js/flash-publish.js", "js/flash-publish-note.js"]) await new Promise((resolve, reject) => {
     const script = document.createElement("script"); script.src = src; script.onload = resolve; script.onerror = reject; document.body.appendChild(script);
   });
   syncModulesLoaded = true;

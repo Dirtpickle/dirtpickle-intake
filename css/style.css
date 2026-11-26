@@ -140,3 +140,6 @@ select { width:100%; font:inherit; padding:15px; background:var(--panel); color:
 .fitem .actions { gap:6px; margin-top:8px; } .fitem .actions button { flex:1 1 auto; }
 .fitem strong.flash-code { font-size:18px; }
 .fgroup { margin:18px 0 8px; font-size:20px; }
+
+.publish-note { position:fixed; top:10px; left:50%; transform:translateX(-50%); z-index:60; padding:10px 18px; border-radius:999px; font-weight:600; background:#333; color:#fff; box-shadow:0 2px 10px rgba(0,0,0,.4); }
+.publish-note.done { background:#1f7a3a; } .publish-note.failed { background:#a33; }
