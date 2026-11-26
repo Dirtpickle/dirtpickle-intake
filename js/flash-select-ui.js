@@ -9,7 +9,7 @@ const FlashSelectUI = (() => {
   const selectedIds = () => [...selected];
   const tick = f => active ? `<label class="flash-tick"><input type="checkbox" data-flash-select="${esc(f.id)}" ${selected.has(f.id) ? "checked" : ""} aria-label="Select ${esc(f.code)}"></label>` : "";
   const controls = () => active ? `<div class="card flash-select-tools"><button class="small" data-select-all>Select all</button><button class="small" data-select-none>Select none</button></div>` : "";
-  const bottom = () => active ? `<div class="flash-bulk-bar"><span>${selected.size} selected</span><div class="actions"><button class="small" data-bulk-action="delete">${deleteArmed ? "Tap again to delete" : "Delete"}</button><button class="small" data-bulk-action="repeatable">Make Repeatable</button><button class="small" data-bulk-action="one-off">Make Unique</button><button class="small" data-bulk-action="limited">Make Limited edition</button><button class="small" data-bulk-action="price">Set price</button><button class="small" data-bulk-action="sheet">Set sheet</button><button class="small" data-bulk-action="hold">Hold</button><button class="small" data-bulk-action="release">Release</button><button class="small" data-bulk-action="sold">Mark sold</button><button class="small" data-bulk-action="hide">Hide</button><button class="small" data-bulk-action="show">Show</button><button class="small" data-bulk-action="top">Move to top</button><button class="small" data-bulk-action="bottom">Move to bottom</button></div></div>` : "";
+  const bottom = () => active ? `<div class="flash-bulk-bar"><span>${selected.size} selected</span><div class="actions"><button class="small" data-bulk-action="delete">${deleteArmed ? "Tap again to delete" : "Delete"}</button><button class="small" data-bulk-action="repeatable">Make Repeatable</button><button class="small" data-bulk-action="one-off">Make Unique</button><button class="small" data-bulk-action="limited">Make Limited edition</button><button class="small" data-bulk-action="quantity">Set quantity</button><button class="small" data-bulk-action="price">Set price</button><button class="small" data-bulk-action="sheet">Set sheet</button><button class="small" data-bulk-action="hold">Hold</button><button class="small" data-bulk-action="release">Release</button><button class="small" data-bulk-action="sold">Mark sold</button><button class="small" data-bulk-action="hide">Hide</button><button class="small" data-bulk-action="show">Show</button><button class="small" data-bulk-action="top">Move to top</button><button class="small" data-bulk-action="bottom">Move to bottom</button></div></div>` : "";
   function header() { const note = notice ? `<div class="banner warn">${esc(notice)}</div>` : ""; notice = ""; return `${note}<div class="flash-search"><label for="flashSearch">Search flash</label><input id="flashSearch" value="${esc(query)}" placeholder="Code or name"></div>`; }
   function leave() { selected.clear(); deleteArmed = false; }
   function refresh() { go("flash"); }
@@ -22,6 +22,7 @@ const FlashSelectUI = (() => {
     if ((action === "repeatable" && ids.some(id => Flash.get(id)?.status === "sold")) && !confirm("Make sold designs repeatable and available?")) return;
     let value = "";
     if (action === "price") { value = prompt("Price for selected designs", ""); if (value === null) return; if (value.trim() === "" || !Number.isFinite(Number(value))) { message("Enter a numeric price."); return refresh(); } }
+    if (action === "quantity") { value = prompt("How many of each (limited edition only)", ""); if (value === null) return; if (!Number.isInteger(Number(value)) || Number(value) < 1) { message("Enter a whole number, 1 or more."); return refresh(); } }
     if (action === "sheet") { value = prompt("Sheet for selected designs", ""); if (value === null) return; value = value.trim(); }
     const result = await FlashBulk.apply(action, ids, value);
     if (result.refused?.length) message(`Could not delete: ${result.refused.map(item => item.code).join(", ")} is used by a session.`);
@@ -36,6 +37,8 @@ const FlashSelectUI = (() => {
     if (input) return false;
     const select = e.target.closest("[data-flash-select]");
     if (select) { selected.has(select.dataset.flashSelect) ? selected.delete(select.dataset.flashSelect) : selected.add(select.dataset.flashSelect); refresh(); return true; }
+    const group = e.target.closest("[data-select-group]");
+    if (group) { const ids = [...group.closest(".fgroup").nextElementSibling.querySelectorAll(".fitem[data-id]")].map(c => c.dataset.id); const all = ids.every(id => selected.has(id)); ids.forEach(id => all ? selected.delete(id) : selected.add(id)); refresh(); return true; }
     const card = e.target.closest(".fitem[data-id]");
     if (card && !e.target.closest("button")) { const id = card.dataset.id; selected.has(id) ? selected.delete(id) : selected.add(id); refresh(); return true; }
     if (e.target.closest("[data-select-all]")) { document.querySelectorAll(".fitem[data-id]").forEach(card => selected.add(card.dataset.id)); refresh(); return true; }

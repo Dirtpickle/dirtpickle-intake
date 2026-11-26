@@ -25,6 +25,7 @@ const FlashBulk = (() => {
       if (action === "repeatable") await save(item, { kind: "repeatable", status: "available", reservedFor: null, purchase: null });
       else if (action === "one-off") await save(item, { kind: "one-off", status: item.kind === "repeatable" ? "available" : item.status });
       else if (action === "limited") { const quantity = item.quantity || FlashSettings.get().defaultQuantity; await save(item, { kind: "limited", quantity, sold: item.sold || 0, status: (item.sold || 0) >= quantity ? "sold" : "available", reservedFor: null, purchase: null }); }
+      else if (action === "quantity") { if (item.kind !== "limited") { skipped++; continue; } const q = Math.max(1, Math.floor(Number(value))); await save(item, { quantity: q, status: (item.sold || 0) >= q ? "sold" : "available" }); }
       else if (action === "price") await save(item, { price: value });
       else if (action === "sheet") await save(item, { sheet: value || "Unsorted" });
       else if (action === "hold") await Flash.hold(item.id);
