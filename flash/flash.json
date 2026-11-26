@@ -1,14 +1,14 @@
 {
  "version": 1,
- "updatedAt": "2026-11-26T12:39:30.742Z",
+ "updatedAt": "2026-11-26T12:42:24.742Z",
  "event": "Black Friday Flash",
  "items": [
   {
    "code": "NEW1",
    "name": "",
    "image": "img/NEW1-b6b4052d.jpg",
-   "price": "",
-   "kind": "one-off",
+   "price": 80,
+   "kind": "repeatable",
    "sheet": "Unsorted",
    "status": "available"
   },
