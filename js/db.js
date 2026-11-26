@@ -138,6 +138,14 @@ const DB = (() => {
       });
       key = null; priv = null; cache.clear();
     },
+    /* True when `pin` is this device's unlock PIN. Does not unlock or change anything. */
+    async pinMatches(pin) {
+      const auth = await run("meta", "readonly", s => s.get("auth"));
+      if (!auth) return false;
+      const previous = key;
+      key = await derive(pin, auth.salt);
+      try { await dec(auth.check); return true; } catch (_) { return false; } finally { key = previous; }
+    },
     async changePin(newPin) {
       if (!key) throw new Error("Locked");
       if (unreadable) throw new Error("Some records could not be read; PIN change refused to avoid losing them. Make a backup first.");
