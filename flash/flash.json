@@ -1,6 +1,52 @@
 {
  "version": 1,
- "updatedAt": "2026-11-26T12:21:14.234Z",
+ "updatedAt": "2026-11-26T12:39:30.742Z",
  "event": "Black Friday Flash",
- "items": []
+ "items": [
+  {
+   "code": "NEW1",
+   "name": "",
+   "image": "img/NEW1-b6b4052d.jpg",
+   "price": "",
+   "kind": "one-off",
+   "sheet": "Unsorted",
+   "status": "available"
+  },
+  {
+   "code": "NEW2",
+   "name": "",
+   "image": "img/NEW2-1d736e69.jpg",
+   "price": "",
+   "kind": "one-off",
+   "sheet": "Unsorted",
+   "status": "available"
+  },
+  {
+   "code": "NEW3",
+   "name": "",
+   "image": "img/NEW3-66a9f370.jpg",
+   "price": "",
+   "kind": "one-off",
+   "sheet": "Unsorted",
+   "status": "available"
+  },
+  {
+   "code": "NEW4",
+   "name": "",
+   "image": "img/NEW4-3a0ebd08.jpg",
+   "price": "",
+   "kind": "one-off",
+   "sheet": "Unsorted",
+   "status": "available"
+  },
+  {
+   "code": "NEW5",
+   "name": "",
+   "image": "img/NEW5-fa9e6980.jpg",
+   "price": "",
+   "kind": "one-off",
+   "sheet": "Unsorted",
+   "status": "available"
+  }
+ ]
 }
