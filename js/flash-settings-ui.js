@@ -10,7 +10,7 @@ screens.flashSettings = {
     $("#saveFlashSettings", root).onclick = async () => {
       const quantity = Math.max(1, parseInt($("#flashDefaultQuantity", root).value, 10) || 1);
       await FlashSettings.save({ defaultKind: $("#flashDefaultKind", root).value, defaultPrice: $("#flashDefaultPrice", root).value.trim(), defaultQuantity: quantity, depositPercent: Math.min(100, Math.max(1, parseInt($("#flashDeposit", root).value, 10) || 50)), prefix: FlashOrder.cleanPrefix($("#flashPrefix", root).value), info: $("#flashInfo", root).value.trim() });
-      if (typeof FlashPublish !== "undefined") FlashPublish.run().catch(() => {});
+      if (typeof FlashPublish !== "undefined") FlashPublish.soon();
       $("#flashSettingsMsg", root).textContent = "Saved.";
     };
   }

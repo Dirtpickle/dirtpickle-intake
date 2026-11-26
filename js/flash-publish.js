@@ -17,6 +17,10 @@ const FlashPublish = (() => {
     } catch (e) { tell("failed"); throw e; } finally { working = false; }
   }
 
+  // Many quick changes (bulk edits, importing pictures) wait for a quiet moment and go out as ONE publish.
+  let timer = null;
+  function soon() { tell("working"); clearTimeout(timer); timer = setTimeout(() => run().catch(() => {}), 4000); }
+
   async function publishOnce() {
     try {
       const all = Flash.list();
@@ -40,5 +44,5 @@ const FlashPublish = (() => {
     const s = DB.get("settings") || {};
     return s.flashPublishedAt && !s.flashPublishPending ? "Website: up to date" : "Website: not published yet";
   }
-  return { run, status };
+  return { run, soon, status };
 })();
