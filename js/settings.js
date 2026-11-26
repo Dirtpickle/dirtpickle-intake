@@ -11,11 +11,11 @@ const SettingsMenu = (() => {
   function html() {
     return `${bar("Settings", { back: "home" })}<div class="card settings-menu">${entries.map(([id, title, help]) =>
       `<button class="tile" data-go="${id}" style="width:100%;text-align:left;margin-bottom:12px"><span>${title}</span><small>${help}</small></button>`).join("")}
-      ${AppVersion.html()}</div>`;
+</div>`;
   }
 
   function register(screens) {
-    screens.settings = { html, bind: root => AppVersion.bind(root) };
+    screens.settings = { html };
   }
 
   return { register };

@@ -11,5 +11,6 @@ const AppVersion = (() => {
       el.textContent = names.length ? `Version ${names[names.length - 1].replace("dp-app-", "")}` : "Version (not installed offline yet)";
     } catch (_) { el.textContent = "Version unknown"; }
   }
-  return { html, bind };
+  function stamp(root) { root.insertAdjacentHTML("beforeend", html()); return bind(root); }
+  return { html, bind, stamp };
 })();

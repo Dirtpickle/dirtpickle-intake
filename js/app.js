@@ -57,6 +57,7 @@ function go(name, params = {}, { fromPopstate = false, replace = false } = {}) {
   const root = $("#app");
   root.innerHTML = s.html(params);
   if (s.bind) s.bind(root, params);
+  AppVersion.stamp(root);
   window.scrollTo(0, 0);
 }
 /* Back/forward: never render a pro screen unless the pro side is unlocked (intake kiosk must not reach saved data). */
