@@ -1,6 +1,6 @@
 {
  "version": 1,
- "updatedAt": "2026-11-26T22:06:11.873Z",
+ "updatedAt": "2026-11-26T22:06:21.595Z",
  "event": "Black Friday Flash",
  "info": "Claim a design in person at the shop. Unique designs are held with a 50% deposit; without one, a design goes to whoever gets it tattooed first.",
  "items": [
@@ -152,7 +152,7 @@
    "code": "NEW19",
    "name": "",
    "image": "img/NEW19-716ffab2.jpg",
-   "price": 100,
+   "price": 120,
    "kind": "repeatable",
    "sheet": "Unsorted",
    "status": "available"
