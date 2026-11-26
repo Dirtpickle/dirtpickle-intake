@@ -160,7 +160,6 @@ async function afterUnlock(pin) {
   settings = { ...DEFAULTS, ...saved, pricing: { ...DEFAULTS.pricing, ...(saved.pricing || {}) } };
   settings = await Events.migrateLegacy(settings);
   await loadSyncModules();
-  if ((DB.get("settings") || {}).flashPublishPending && navigator.onLine && Mailer.configured(Mailer.relayFromSettings())) FlashPublish.run().catch(() => {});
   await loadProReturningModules();
   await Consent.init();
   await Aftercare.init();

@@ -13,7 +13,7 @@ const FlashSelectUI = (() => {
   function header() { const note = notice ? `<div class="banner warn">${esc(notice)}</div>` : ""; notice = ""; return `${note}<div class="flash-search"><label for="flashSearch">Search flash</label><input id="flashSearch" value="${esc(query)}" placeholder="Code or name"></div>`; }
   function leave() { selected.clear(); deleteArmed = false; }
   function refresh() { go("flash"); }
-  function publish() { if (typeof FlashPublish !== "undefined") FlashPublish.soon(); }
+  function publish() { if (typeof FlashPublish !== "undefined") FlashPublish.changed(); }
   function message(text) { notice = notice ? `${notice} ${text}` : text; }
   async function bulk(action) {
     const ids = selectedIds(); if (!ids.length) return;

@@ -17,9 +17,11 @@ const FlashPublish = (() => {
     } catch (e) { tell("failed"); throw e; } finally { working = false; }
   }
 
-  // Many quick changes (bulk edits, importing pictures) wait for a quiet moment and go out as ONE publish.
-  let timer = null;
-  function soon() { tell("working"); clearTimeout(timer); timer = setTimeout(() => run().catch(() => {}), 4000); }
+  // Nothing goes out by itself: a change only marks the website as out of date. The artist presses Publish.
+  async function changed() {
+    if (working) again = true;
+    await DB.put({ ...(DB.get("settings") || {}), flashPublishPending: true });
+  }
 
   async function publishOnce() {
     try {
@@ -42,7 +44,8 @@ const FlashPublish = (() => {
 
   function status() {
     const s = DB.get("settings") || {};
-    return s.flashPublishedAt && !s.flashPublishPending ? "Website: up to date" : "Website: not published yet";
+    if (s.flashPublishedAt && !s.flashPublishPending) return "Website: up to date";
+    return s.flashPublishedAt ? "Website: changes not published yet" : "Website: not published yet";
   }
-  return { run, soon, status };
+  return { run, changed, status };
 })();

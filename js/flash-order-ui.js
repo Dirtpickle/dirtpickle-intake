@@ -11,7 +11,7 @@ screens.flashCodes = {
     $("#codesGo", root).onclick = async () => {
       const msg = $("#codesMsg", root);
       if (FlashOrder.locked() && !$("#codesSure", root).checked) { msg.innerHTML = `<div class="banner bad">Tick "I'm sure, renumber" first.</div>`; return; }
-      try { const n = await FlashOrder.assignCodes($("#codesPrefix", root).value); if (typeof FlashPublish !== "undefined") FlashPublish.soon(); go("flash"); }
+      try { const n = await FlashOrder.assignCodes($("#codesPrefix", root).value); if (typeof FlashPublish !== "undefined") FlashPublish.changed(); go("flash"); }
       catch (e) { msg.innerHTML = `<div class="banner bad">${esc(e.message)}</div>`; }
     };
   }
