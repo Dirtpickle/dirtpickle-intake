@@ -1,6 +1,6 @@
 {
  "version": 1,
- "updatedAt": "2026-11-26T21:48:33.215Z",
+ "updatedAt": "2026-11-26T21:49:35.597Z",
  "event": "Black Friday Flash",
  "info": "Claim a design in person at the shop. Unique designs are held with a 50% deposit; without one, a design goes to whoever gets it tattooed first.",
  "items": [
@@ -41,72 +41,72 @@
    "status": "available"
   },
   {
-   "code": "NEW6",
-   "name": "",
-   "image": "img/NEW6-e006e514.jpg",
-   "price": 100,
-   "kind": "repeatable",
-   "sheet": "Unsorted",
-   "status": "available"
-  },
-  {
-   "code": "NEW7",
-   "name": "",
-   "image": "img/NEW7-001315ca.jpg",
-   "price": 100,
-   "kind": "repeatable",
-   "sheet": "Unsorted",
-   "status": "available"
-  },
-  {
-   "code": "NEW9",
-   "name": "",
-   "image": "img/NEW9-418b4d6c.jpg",
-   "price": 100,
-   "kind": "repeatable",
-   "sheet": "Unsorted",
-   "status": "available"
-  },
-  {
-   "code": "NEW10",
-   "name": "",
-   "image": "img/NEW10-3dd6837a.jpg",
-   "price": 100,
-   "kind": "repeatable",
-   "sheet": "Unsorted",
-   "status": "available"
-  },
-  {
-   "code": "NEW11",
-   "name": "",
-   "image": "img/NEW11-df598d39.jpg",
-   "price": 100,
-   "kind": "repeatable",
-   "sheet": "Unsorted",
-   "status": "available"
-  },
-  {
-   "code": "NEW12",
-   "name": "",
-   "image": "img/NEW12-965e214e.jpg",
-   "price": 100,
-   "kind": "repeatable",
-   "sheet": "Unsorted",
-   "status": "available"
-  },
-  {
-   "code": "NEW13",
-   "name": "",
-   "image": "img/NEW13-bd8faa1c.jpg",
-   "price": 100,
-   "kind": "repeatable",
-   "sheet": "Unsorted",
-   "status": "available"
-  },
-  {
    "code": "BLK5",
    "name": "",
-   "image": "img/BLK5-1d736e69.jpg",
+   "image": "img/BLK5-e006e514.jpg",
+   "price": 100,
+   "kind": "repeatable",
+   "sheet": "Unsorted",
+   "status": "available"
+  },
+  {
+   "code": "BLK6",
+   "name": "",
+   "image": "img/BLK6-001315ca.jpg",
+   "price": 100,
+   "kind": "repeatable",
+   "sheet": "Unsorted",
+   "status": "available"
+  },
+  {
+   "code": "BLK7",
+   "name": "",
+   "image": "img/BLK7-418b4d6c.jpg",
+   "price": 100,
+   "kind": "repeatable",
+   "sheet": "Unsorted",
+   "status": "available"
+  },
+  {
+   "code": "BLK8",
+   "name": "",
+   "image": "img/BLK8-3dd6837a.jpg",
+   "price": 100,
+   "kind": "repeatable",
+   "sheet": "Unsorted",
+   "status": "available"
+  },
+  {
+   "code": "BLK9",
+   "name": "",
+   "image": "img/BLK9-df598d39.jpg",
+   "price": 100,
+   "kind": "repeatable",
+   "sheet": "Unsorted",
+   "status": "available"
+  },
+  {
+   "code": "BLK10",
+   "name": "",
+   "image": "img/BLK10-965e214e.jpg",
+   "price": 100,
+   "kind": "repeatable",
+   "sheet": "Unsorted",
+   "status": "available"
+  },
+  {
+   "code": "BLK11",
+   "name": "",
+   "image": "img/BLK11-bd8faa1c.jpg",
+   "price": 100,
+   "kind": "repeatable",
+   "sheet": "Unsorted",
+   "status": "available"
+  },
+  {
+   "code": "BLK12",
+   "name": "",
+   "image": "img/BLK12-1d736e69.jpg",
    "price": 120,
    "kind": "limited",
    "sheet": "Unsorted",
@@ -115,9 +115,9 @@
    "remaining": 3
   },
   {
-   "code": "NEW8",
+   "code": "BLK13",
    "name": "",
-   "image": "img/NEW8-d33ea34b.jpg",
+   "image": "img/BLK13-d33ea34b.jpg",
    "price": 150,
    "kind": "one-off",
    "sheet": "Unsorted",
