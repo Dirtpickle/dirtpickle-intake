@@ -1,6 +1,6 @@
 {
  "version": 1,
- "updatedAt": "2026-11-27T14:41:19.253Z",
+ "updatedAt": "2026-11-27T14:41:37.874Z",
  "event": "Black Friday Flash",
  "info": "Claim a design in person at the shop. Unique designs are held with a 50% deposit; without one, a design goes to whoever gets it tattooed first.",
  "items": [
@@ -194,10 +194,19 @@
    "status": "available"
   },
   {
+   "code": "BLK22",
+   "name": "",
+   "image": "img/BLK22-3a739677.jpg",
+   "price": 100,
+   "kind": "repeatable",
+   "sheet": "Unsorted",
+   "status": "available"
+  },
+  {
    "code": "BLK23",
    "name": "",
-   "image": "img/BLK23-3a739677.jpg",
-   "price": 100,
+   "image": "img/BLK23-d4245d1c.jpg",
+   "price": 80,
    "kind": "repeatable",
    "sheet": "Unsorted",
    "status": "available"
@@ -205,8 +214,8 @@
   {
    "code": "BLK24",
    "name": "",
-   "image": "img/BLK24-d4245d1c.jpg",
-   "price": 80,
+   "image": "img/BLK24-ba231526.jpg",
+   "price": 100,
    "kind": "repeatable",
    "sheet": "Unsorted",
    "status": "available"
@@ -214,8 +223,8 @@
   {
    "code": "BLK25",
    "name": "",
-   "image": "img/BLK25-ba231526.jpg",
-   "price": 100,
+   "image": "img/BLK25-c8337e2f.jpg",
+   "price": 80,
    "kind": "repeatable",
    "sheet": "Unsorted",
    "status": "available"
@@ -223,7 +232,7 @@
   {
    "code": "BLK26",
    "name": "",
-   "image": "img/BLK26-c8337e2f.jpg",
+   "image": "img/BLK26-0057366f.jpg",
    "price": 80,
    "kind": "repeatable",
    "sheet": "Unsorted",
@@ -232,8 +241,8 @@
   {
    "code": "BLK27",
    "name": "",
-   "image": "img/BLK27-0057366f.jpg",
-   "price": 80,
+   "image": "img/BLK27-cdf455d0.jpg",
+   "price": 100,
    "kind": "repeatable",
    "sheet": "Unsorted",
    "status": "available"
@@ -241,7 +250,7 @@
   {
    "code": "BLK28",
    "name": "",
-   "image": "img/BLK28-cdf455d0.jpg",
+   "image": "img/BLK28-bd6cfdf4.jpg",
    "price": 100,
    "kind": "repeatable",
    "sheet": "Unsorted",
@@ -250,16 +259,7 @@
   {
    "code": "BLK29",
    "name": "",
-   "image": "img/BLK29-bd6cfdf4.jpg",
-   "price": 100,
-   "kind": "repeatable",
-   "sheet": "Unsorted",
-   "status": "available"
-  },
-  {
-   "code": "BLK30",
-   "name": "",
-   "image": "img/BLK30-1d736e69.jpg",
+   "image": "img/BLK29-1d736e69.jpg",
    "price": 120,
    "kind": "limited",
    "sheet": "Unsorted",
@@ -268,18 +268,18 @@
    "remaining": 3
   },
   {
-   "code": "BLK31",
+   "code": "BLK30",
    "name": "",
-   "image": "img/BLK31-d33ea34b.jpg",
+   "image": "img/BLK30-d33ea34b.jpg",
    "price": 150,
    "kind": "one-off",
    "sheet": "Unsorted",
    "status": "available"
   },
   {
-   "code": "BLK32",
+   "code": "BLK31",
    "name": "",
-   "image": "img/BLK32-23adce47.jpg",
+   "image": "img/BLK31-23adce47.jpg",
    "price": 100,
    "kind": "one-off",
    "sheet": "Unsorted",
