@@ -440,7 +440,7 @@ SettingsMenu.register(screens);
 /* ---------- boot (waits until every script has loaded) ---------- */
 const boot = async () => {
   try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (_) {}
-  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+  if ("serviceWorker" in navigator) { navigator.serviceWorker.register("sw.js").catch(() => {}); AppUpdate.start(); }
   await DB.open();
   if (await DB.hasPin() && DB.isUnlocked()) await Flash.migrateAll();
   if (!(await DB.hasPin())) { showPin("setup1"); return; }
