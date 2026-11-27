@@ -1,6 +1,6 @@
 {
  "version": 1,
- "updatedAt": "2026-11-26T23:09:40.196Z",
+ "updatedAt": "2026-11-27T12:45:34.294Z",
  "event": "Black Friday Flash",
  "info": "Claim a design in person at the shop. Place a 50% deposit to hold a Unique or Limited edition design. Without a deposit, it goes to whoever gets it tattooed first.",
  "items": [
@@ -211,7 +211,7 @@
    "sheet": "Unsorted",
    "status": "available",
    "quantity": 3,
-   "remaining": 3
+   "remaining": 2
   },
   {
    "code": "BLK24",
