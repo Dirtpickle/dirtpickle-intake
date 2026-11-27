@@ -1,6 +1,6 @@
 {
  "version": 1,
- "updatedAt": "2026-11-27T12:45:34.294Z",
+ "updatedAt": "2026-11-27T12:48:33.342Z",
  "event": "Black Friday Flash",
  "info": "Claim a design in person at the shop. Place a 50% deposit to hold a Unique or Limited edition design. Without a deposit, it goes to whoever gets it tattooed first.",
  "items": [
@@ -220,7 +220,7 @@
    "price": 150,
    "kind": "one-off",
    "sheet": "Unsorted",
-   "status": "available"
+   "status": "hold"
   }
  ]
 }
