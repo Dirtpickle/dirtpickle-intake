@@ -1,8 +1,8 @@
 {
  "version": 1,
- "updatedAt": "2026-11-27T12:49:35.805Z",
+ "updatedAt": "2026-11-27T12:58:38.696Z",
  "event": "Black Friday Flash",
- "info": "Claim a design in person at the shop. Place a 50% deposit to hold a Unique or Limited edition design. Without a deposit, it goes to whoever gets it tattooed first.",
+ "info": "Claim a design in person at the shop. Unique designs are held with a 50% deposit; without one, a design goes to whoever gets it tattooed first.",
  "items": [
   {
    "code": "BLK1",
@@ -203,6 +203,42 @@
    "status": "available"
   },
   {
+   "code": "NEW25",
+   "name": "",
+   "image": "img/NEW25-3a739677.jpg",
+   "price": 100,
+   "kind": "repeatable",
+   "sheet": "Unsorted",
+   "status": "available"
+  },
+  {
+   "code": "NEW26",
+   "name": "",
+   "image": "img/NEW26-d4245d1c.jpg",
+   "price": 100,
+   "kind": "repeatable",
+   "sheet": "Unsorted",
+   "status": "available"
+  },
+  {
+   "code": "NEW27",
+   "name": "",
+   "image": "img/NEW27-ba231526.jpg",
+   "price": 100,
+   "kind": "repeatable",
+   "sheet": "Unsorted",
+   "status": "available"
+  },
+  {
+   "code": "NEW28",
+   "name": "",
+   "image": "img/NEW28-c8337e2f.jpg",
+   "price": 100,
+   "kind": "repeatable",
+   "sheet": "Unsorted",
+   "status": "available"
+  },
+  {
    "code": "BLK23",
    "name": "",
    "image": "img/BLK23-1d736e69.jpg",
@@ -211,7 +247,7 @@
    "sheet": "Unsorted",
    "status": "available",
    "quantity": 3,
-   "remaining": 2
+   "remaining": 3
   },
   {
    "code": "BLK24",
