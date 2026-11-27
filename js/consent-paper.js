@@ -94,9 +94,7 @@ const ConsentPaper = (() => {
     ui.heading("Tattoo artist acknowledgment");
     ui.text("I acknowledge that I reviewed the required client information, verified the client's age, addressed relevant safety concerns, obtained consent, and provided or arranged for appropriate aftercare instructions.", { size: 9.5, gap: 6 });
     ui.line("Artist signature:"); if (artistSig) ui.page().drawImage(artistSig, { x: ui.M + 100, y: ui.y() + 11, width: Math.min(170, artistSig.width), height: Math.min(34, artistSig.height) }); ui.line("Date:");
-    ui.heading("Artist use only - procedure record");
-    ["Stencil / design reference:", "Tattoo location:", "Procedure start time:", "Procedure end time:", "Needle / cartridge type:", "Needle / cartridge lot:", "Ink brand(s):", "Pigment / color(s):", "Ink lot / batch number(s):", "Ink expiration date(s):", "Barrier / dressing used:"].forEach(label => ui.line(label));
-    ui.yesNo("Aftercare instructions provided"); ui.yesNo("Final procedure photograph taken"); ui.text("Additional notes / complications:", { f: ui.bold, size: 10, gap: 4 }); ui.line(); ui.line(); ui.line("Final payment collected: $"); ui.line("Artist initials:", "");
+    ui.line("Artist initials:", "");
     if (artistInit) ui.page().drawImage(artistInit, { x: ui.M + 100, y: ui.y() + 11, width: Math.min(70, artistInit.width), height: Math.min(30, artistInit.height) });
   };
   const drawFooter = (ui, d, pdf) => { const pages = pdf.getPages(); pages.forEach((p, i) => p.drawText(clean(`${d.business} | Form v${d.tpl.version || d.tpl.docVersion || "?"} | ${d.tpl.docVersion ? d.tpl.docVersion + " | " : ""}Page ${i + 1} of ${pages.length}`), { x: ui.M, y: 28, size: 8, font: ui.font, color: ui.colors.grey })); };

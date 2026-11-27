@@ -144,3 +144,5 @@ select { width:100%; font:inherit; padding:15px; background:var(--panel); color:
 
 .publish-note { position:fixed; top:10px; left:50%; transform:translateX(-50%); z-index:60; padding:10px 18px; border-radius:999px; font-weight:600; background:#333; color:#fff; box-shadow:0 2px 10px rgba(0,0,0,.4); }
 .publish-note.done { background:#1f7a3a; } .publish-note.failed { background:#a33; }
+
+.idle-ask { position:fixed; inset:0; z-index:70; display:grid; place-items:center; background:rgba(0,0,0,.85); padding:20px; } .idle-ask .card { max-width:420px; text-align:center; }

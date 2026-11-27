@@ -14,13 +14,24 @@ const Intake = (() => {
     startIdle();
     go("iWelcome", {}, { replace: true });
   }
+  /* A half-finished form is wiped after 3 idle minutes so the next person never sees it. Ask "Still there?" first, at 2.5 minutes. */
+  function idleAsk(show) {
+    let box = document.getElementById("idleAsk");
+    if (!show) { if (box) box.remove(); return; }
+    if (box) return;
+    box = document.createElement("div"); box.id = "idleAsk"; box.className = "idle-ask";
+    box.innerHTML = '<div class="card"><h2>Still there?</h2><p>This form will clear soon so your information stays private.</p><button class="primary" id="idleStay">I am still here</button></div>';
+    document.body.appendChild(box);
+  }
   function startIdle() {
     clearInterval(idleTimer);
     idleTimer = setInterval(() => {
-      // Wipe a half-finished form after 3 idle minutes so the next person never sees it.
-      if (DB.isUnlocked()) { clearInterval(idleTimer); return; }
-      if (cur.name !== "iWelcome" && cur.name !== "pin" && Date.now() - lastTouch > 180000) { Consent.K() && Consent.startIntake(P); go("iWelcome"); }
-    }, 10000);
+      if (DB.isUnlocked()) { clearInterval(idleTimer); idleAsk(false); return; }
+      if (cur.name === "iWelcome" || cur.name === "pin") { idleAsk(false); return; }
+      const idle = Date.now() - lastTouch;
+      if (idle > 180000) { idleAsk(false); Consent.K() && Consent.startIntake(P); go("iWelcome"); }
+      else idleAsk(idle > 150000);
+    }, 5000);
   }
   ["pointerdown", "keydown"].forEach(ev => document.addEventListener(ev, () => { lastTouch = Date.now(); }, true));
 

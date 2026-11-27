@@ -134,17 +134,6 @@ const Consent = (() => {
       need(ah + 36); page.drawImage(aimg, { x: M, y: y - ah, width: aw, height: ah });
       page.drawLine({ start: { x: M, y: y - ah - 2 }, end: { x: M + 260, y: y - ah - 2 }, thickness: 0.6, color: GREY }); y -= ah + 6;
       text(`${d.artist || d.business}   |   ${stamp(cs.at)}`, { size: 10 });
-      heading("Artist use only - procedure record");
-      const times = (ses.segments || []).filter(x => x.s);
-      kv("Stencil / design reference", ses.flashName || tat.description);
-      kv("Tattoo location", tat.location); kv("Approximate size", tat.size);
-      kv("Procedure start", times.length ? stamp(times[0].s) : ""); kv("Procedure end", ses.endedAt ? stamp(ses.endedAt) : "");
-      kv("Needle / cartridge type", rec.needleType); kv("Needle / cartridge lot", rec.needleLot);
-      kv("Ink brand(s)", rec.inkBrand); kv("Pigment / color(s)", rec.pigment); kv("Ink lot / batch", rec.inkLot); kv("Ink expiration", rec.inkExp);
-      kv("Barrier / dressing used", rec.barrier);
-      kv("Aftercare instructions provided", rec.aftercareProvided ? "Yes" : "No"); kv("Final procedure photograph taken", rec.finalPhoto ? "Yes" : "No");
-      kv("Notes / complications", rec.complications);
-      kv("Final payment collected", ses.paid !== "" && ses.paid != null ? `$${ses.paid}${ses.payMethod ? " (" + ses.payMethod + ")" : ""}` : "");
       if (cs.initials) {
         const iimg = await pdf.embedPng(cs.initials), iw = 70, ih = Math.min(34, iw * iimg.height / iimg.width);
         need(ih + 30); y -= 6; text("Artist initials:", { f: bold, size: 10, gap: 4 }); page.drawImage(iimg, { x: M, y: y - ih, width: iw, height: ih }); y -= ih + 4;
@@ -433,7 +422,7 @@ const Consent = (() => {
       pdf: bytesToB64(bytes), sha256: hash, emailStatus: "not-sent", copyTo: K.copy.to || "", textCopy: !!K.copy.text, copyPhone: K.copy.phone || ""
     };
     session.consentId = docId; session.updatedAt = now;
-    await DB.put(session); await DB.put(record); await DB.put(client);
+    await DB.put(record); await DB.put(client); await DB.put(session); // contract first: an interruption never leaves a session pointing at a missing contract
     if (K.copy.wants && Mailer.configured(Mailer.relayFromSettings())) Mailer.send(record).catch(() => {});
     return docId;
   }
@@ -507,7 +496,7 @@ const Consent = (() => {
         <div class="card"><strong>Artist countersignature</strong>
         ${cs ? `<dl class="kv" style="margin-top:8px"><dt>Countersigned</dt><dd>${esc(stamp(cs.signedAt))}</dd><dt>SHA-256</dt><dd style="font-size:13px">${esc(cs.sha256)}</dd></dl>
           <div class="actions"><button class="primary" id="cView">View / Print final contract</button><button id="cSave">Download / Share</button><button id="cVerify">Verify integrity</button></div><div id="cMsg" style="margin-top:12px"></div>`
-        : `<p class="mute" style="font-size:16px">Adds your saved signature and initials, plus the procedure record from the session, to a final copy of this contract. The client's signed original stays unchanged.</p>
+        : `<p class="mute" style="font-size:16px">Adds your saved signature and initials to a final copy of this contract. The client's signed original stays unchanged.</p>
           <div class="actions"><button class="primary" id="cSign">Countersign this contract</button></div><div id="cMsg" style="margin-top:12px"></div>`}</div>
         <div class="card mute">These are locked records. They cannot be edited. If something was wrong, have the client sign a new form.</div>`;
     },

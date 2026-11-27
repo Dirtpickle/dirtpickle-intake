@@ -63,6 +63,8 @@ function go(name, params = {}, { fromPopstate = false, replace = false } = {}) {
 /* Back/forward: never render a pro screen unless the pro side is unlocked (intake kiosk must not reach saved data). */
 const INTAKE_SCREEN = /^[ik][A-Z]/;
 Nav.start((name, params) => {
+  /* Back into a check-in step after it ended (or was cleared): nothing is kept, so go home instead of showing a broken page. */
+  if (/^k[A-Z]/.test(name) && !Consent.K()) { go(DB.isUnlocked() ? "home" : "iWelcome", {}, { replace: true }); return; }
   if (!DB.isUnlocked() && !INTAKE_SCREEN.test(name)) return;
   /* Kiosk: after a check-in ends there is no form state, so Back goes to the welcome screen, never a half-empty step. */
   if (!DB.isUnlocked() && name !== "iWelcome" && !Consent.K()) { go("iWelcome", {}, { replace: true }); return; }
