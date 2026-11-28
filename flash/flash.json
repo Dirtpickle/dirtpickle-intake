@@ -1,8 +1,8 @@
 {
  "version": 1,
- "updatedAt": "2026-11-27T14:41:37.874Z",
+ "updatedAt": "2026-11-28T03:33:09.953Z",
  "event": "Black Friday Flash",
- "info": "Claim a design in person at the shop. Unique designs are held with a 50% deposit; without one, a design goes to whoever gets it tattooed first.",
+ "info": "Claim a design in person at the shop. Place a 50% deposit to hold a Unique or Limited edition design. Without a deposit, it goes to whoever gets it tattooed first.",
  "items": [
   {
    "code": "BLK1",
@@ -72,15 +72,6 @@
    "name": "",
    "image": "img/BLK8-3dd6837a.jpg",
    "price": 120,
-   "kind": "repeatable",
-   "sheet": "Unsorted",
-   "status": "available"
-  },
-  {
-   "code": "BLK9",
-   "name": "",
-   "image": "img/BLK9-df598d39.jpg",
-   "price": 100,
    "kind": "repeatable",
    "sheet": "Unsorted",
    "status": "available"
@@ -261,11 +252,9 @@
    "name": "",
    "image": "img/BLK29-1d736e69.jpg",
    "price": 120,
-   "kind": "limited",
+   "kind": "one-off",
    "sheet": "Unsorted",
-   "status": "available",
-   "quantity": 3,
-   "remaining": 3
+   "status": "available"
   },
   {
    "code": "BLK30",
@@ -275,15 +264,6 @@
    "kind": "one-off",
    "sheet": "Unsorted",
    "status": "available"
-  },
-  {
-   "code": "BLK31",
-   "name": "",
-   "image": "img/BLK31-23adce47.jpg",
-   "price": 100,
-   "kind": "one-off",
-   "sheet": "Unsorted",
-   "status": "sold"
   }
  ]
 }
